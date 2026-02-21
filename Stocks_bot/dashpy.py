@@ -9,17 +9,18 @@ from dash import Dash, dcc, html, Input, Output, State
 import dash_bootstrap_components as dbc
 from dotenv import load_dotenv
 import os
+from google import genai
+import dash_ag_grid as dag
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", message=".*Timestamp.utcnow.*")
+
 
 load_dotenv()
+
 api_key = os.getenv("GEMINI_KEY")
 
-# Gemini SDK (NEW)
-from google import genai
-
-# If you are using dash-ag-grid for other tabs
-import dash_ag_grid as dag
-
-client = genai.Client(api_key = api_key)
+client = genai.Client(api_key=api_key)
 
 # Cache for LLM
 llm_cache = {}
@@ -93,7 +94,7 @@ app.layout = dbc.Container([
         ]),
 
         # ---------- FUNDAMENTAL TAB ----------
-        dbc.Tab(label="Fundamental", children=[
+        dbc.Tab(label="Sentiment", children=[
             dbc.Row([
                 dbc.RadioItems(
                     options=[{"label": x, "value": x} for x in fund_df.columns if x!="Ticker"],
@@ -115,7 +116,7 @@ app.layout = dbc.Container([
         ]),
 
         # ---------- SENTIMENT TAB ----------
-        dbc.Tab(label="Sentiment", children=[
+        dbc.Tab(label="Fundamental", children=[
             dbc.Row([
                 dbc.RadioItems(
                     options=[{"label": x, "value": x} for x in sentiment_df.columns if x!="Ticker"],
@@ -248,11 +249,18 @@ def update_price_chart(ticker, interval, _):
         low=df["Low"],
         close=df["Close"]
     )])
+    rangebreaks = [dict(bounds=["sat","mon"])]
+
+    if interval == "1h":
+        rangebreaks.append(dict(bounds=[16, 9.5], pattern="hour"))
+
     fig.update_layout(
         template="plotly_white",
         margin=dict(l=10,r=10,t=40,b=10),
-        title=f"<span style='color:{color}'>{ticker} ({interval}) — {current_price:.2f} ({pct:+.2f}%)</span>"
+        title=f"<span style='color:{color}'>{ticker} ({interval}) — {current_price:.2f} ({pct:+.2f}%)</span>",
+        xaxis=dict(rangebreaks=rangebreaks)
     )
+
     return fig
 
 # ---------------- TECH / FUND / SENTIMENT ----------------
@@ -279,5 +287,4 @@ def run_llm_text(n_clicks, query, ticker):
 
 # ---------------- RUN APP ----------------
 if __name__ == '__main__':
-
         app.run(debug=True)
