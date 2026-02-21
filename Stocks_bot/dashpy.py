@@ -19,7 +19,7 @@ from google import genai
 # If you are using dash-ag-grid for other tabs
 import dash_ag_grid as dag
 
-client = genai.Client(api_key)
+client = genai.Client(api_key = api_key)
 
 # Cache for LLM
 llm_cache = {}
@@ -279,4 +279,5 @@ def run_llm_text(n_clicks, query, ticker):
 
 # ---------------- RUN APP ----------------
 if __name__ == '__main__':
+
         app.run(debug=True)
