@@ -1,0 +1,468 @@
+project_pipeline:
+  - ticker: PRE
+    company: Pensana
+    exchange: MAINMARKET
+    project: Longonjo / Saltend
+    commodity_focus: NdPr magnet metals
+    ree_class: LREE
+    supply_chain_role: Mine developer + processor
+    country: Angola / United Kingdom
+    stage: Development
+    drill_results_status: Resource/project defined
+    historic_mine_flag: No
+    source_confidence: LSE tearsheet + manual review
+    priority: High
+    notes: Track funding, construction, offtake, and Saltend processing milestones.
+
+  - ticker: MKA
+    company: Mkango Resources
+    exchange: AIM
+    project: Songwe Hill / rare-earth recycling interests
+    commodity_focus: Rare earths, recycling
+    ree_class: LREE / recycling
+    supply_chain_role: Explorer + recycling exposure
+    country: Malawi / United Kingdom
+    stage: Development / recycling platform
+    drill_results_status: Project defined
+    historic_mine_flag: Unknown
+    source_confidence: LSE market data + manual placeholder
+    priority: High
+    notes: Add REEx LREE ranking and recycling/processors context when imported.
+
+  - ticker: RBW
+    company: Rainbow Rare Earths
+    exchange: MAINMARKET
+    project: Phalaborwa
+    commodity_focus: Rare earths from phosphogypsum
+    ree_class: REE / secondary-source processing
+    supply_chain_role: Developer + processor
+    country: South Africa
+    stage: Development
+    drill_results_status: Project defined
+    historic_mine_flag: No
+    source_confidence: LSE market data + manual placeholder
+    priority: High
+    notes: Strong fit for processors and magnet-metal supply-chain monitoring.
+
+  - ticker: REE
+    company: Altona Rare Earths
+    exchange: MAINMARKET
+    project: Rare earth exploration portfolio
+    commodity_focus: Rare earths
+    ree_class: REE
+    supply_chain_role: Explorer
+    country: Africa
+    stage: Exploration
+    drill_results_status: Monitor
+    historic_mine_flag: Unknown
+    source_confidence: LSE tearsheet + manual review
+    priority: High
+    notes: Candidate for REEx HREE/LREE ranking enrichment.
+
+  - ticker: EEE
+    company: Empire Metals
+    exchange: AIM
+    project: Pitfield
+    commodity_focus: Titanium, critical minerals
+    ree_class: Critical minerals
+    supply_chain_role: Explorer / developer
+    country: Australia
+    stage: Exploration / development
+    drill_results_status: Project defined
+    historic_mine_flag: Unknown
+    source_confidence: LSE market data + manual placeholder
+    priority: High
+    notes: Track titanium process flowsheet and resource/catalyst updates.
+
+  - ticker: GWMO
+    company: Great Western Mining
+    exchange: AIM
+    project: Nevada portfolio
+    commodity_focus: Copper, gold, critical minerals
+    ree_class: Critical minerals
+    supply_chain_role: Explorer
+    country: United States
+    stage: Exploration
+    drill_results_status: Monitor
+    historic_mine_flag: Yes
+    source_confidence: LSE market data + manual placeholder
+    priority: Medium
+    notes: Historic mining district flag fits the legacy optionality screen.
+
+  - ticker: FOX
+    company: Focus Xplore
+    exchange: AIM
+    project: Former Katoro Gold portfolio / new critical-minerals strategy
+    commodity_focus: Critical minerals, exploration
+    ree_class: Critical minerals
+    supply_chain_role: Explorer
+    country: Multi-jurisdiction
+    stage: Strategic reset / exploration
+    drill_results_status: Monitor
+    historic_mine_flag: Unknown
+    source_confidence: LSE market data + ticker-change review
+    priority: Medium
+    notes: Requested as Katoro Gold (KAT); current LSE ticker is FOX.
+
+  - ticker: POW
+    company: Power Metal Resources
+    exchange: AIM
+    project: Project generator portfolio
+    commodity_focus: Critical minerals, uranium, precious/base metals
+    ree_class: Critical minerals
+    supply_chain_role: Project generator
+    country: Multi-jurisdiction
+    stage: Exploration portfolio
+    drill_results_status: Monitor
+    historic_mine_flag: Mixed
+    source_confidence: LSE market data + manual placeholder
+    priority: High
+    notes: Useful for early-stage optionality and portfolio-catalyst tracking.
+
+  - ticker: UFO
+    company: Alien Metals
+    exchange: AIM
+    project: Hancock / Elizabeth Hill
+    commodity_focus: Iron ore, silver, base metals
+    ree_class: Critical minerals
+    supply_chain_role: Explorer / developer
+    country: Australia
+    stage: Development / exploration
+    drill_results_status: Project defined
+    historic_mine_flag: Unknown
+    source_confidence: LSE market data + manual placeholder
+    priority: Medium
+    notes: Track development, permitting, and funding catalysts.
+
+  - ticker: KAV
+    company: Kavango Resources
+    exchange: MAINMARKET
+    project: Kalahari / Zimbabwe portfolio
+    commodity_focus: Copper, gold, exploration
+    ree_class: Critical minerals
+    supply_chain_role: Explorer
+    country: Botswana / Zimbabwe
+    stage: Exploration
+    drill_results_status: Monitor
+    historic_mine_flag: Unknown
+    source_confidence: LSE market data + manual placeholder
+    priority: Medium
+    notes: Track drill-result catalysts and portfolio changes.
+
+  - ticker: ATM
+    company: Andrada Mining
+    exchange: AIM
+    project: Uis
+    commodity_focus: Tin, lithium, tantalum
+    ree_class: Critical minerals
+    supply_chain_role: Producer / developer
+    country: Namibia
+    stage: Operations + development
+    drill_results_status: Project defined
+    historic_mine_flag: Yes
+    source_confidence: LSE market data + manual placeholder
+    priority: High
+    notes: Strong fit for production/development and battery-metals monitoring.
+
+  - ticker: TGR
+    company: Total Graphite
+    requested_name: Tirupati Graphite
+    exchange: MAINMARKET
+    project: Graphite operations / development portfolio
+    commodity_focus: Graphite, battery materials
+    ree_class: Battery materials
+    supply_chain_role: Producer / developer
+    country: Madagascar / Mozambique
+    stage: Operations / development
+    drill_results_status: Project defined
+    historic_mine_flag: Unknown
+    source_confidence: LSE market data + name-change review
+    priority: Medium
+    notes: Requested as Tirupati Graphite; LSE currently returns Total Graphite for TGR.
+
+  - ticker: IRON
+    company: Ironveld
+    exchange: AIM
+    project: Bushveld complex assets
+    commodity_focus: Iron, vanadium, titanium
+    ree_class: Critical minerals
+    supply_chain_role: Developer / producer
+    country: South Africa
+    stage: Development / operations
+    drill_results_status: Project defined
+    historic_mine_flag: Unknown
+    source_confidence: LSE market data + manual placeholder
+    priority: Medium
+    notes: Track processing, funding, and production milestones.
+
+  - ticker: CRCL
+    company: Corcel
+    exchange: AIM
+    project: Battery-metals / energy transition portfolio
+    commodity_focus: Battery metals, energy transition
+    ree_class: Battery materials
+    supply_chain_role: Developer / investment platform
+    country: Multi-jurisdiction
+    stage: Portfolio development
+    drill_results_status: Monitor
+    historic_mine_flag: Unknown
+    source_confidence: LSE market data + manual placeholder
+    priority: Medium
+    notes: Track portfolio strategy and funding catalysts.
+
+  - ticker: TM1
+    company: Technology Minerals
+    exchange: MAINMARKET
+    project: Battery metals and recycling platform
+    commodity_focus: Battery metals, recycling
+    ree_class: Battery materials
+    supply_chain_role: Recycler + developer
+    country: United Kingdom / multi-jurisdiction
+    stage: Development / recycling
+    drill_results_status: Monitor
+    historic_mine_flag: Unknown
+    source_confidence: LSE market data + manual placeholder
+    priority: Medium
+    notes: Track recycling scale-up and battery-metals project catalysts.
+
+  - ticker: SML
+    company: Strategic Minerals
+    exchange: AIM
+    project: Redmoor / Cobre
+    commodity_focus: Tungsten, tin, copper, magnetite
+    ree_class: Critical minerals
+    supply_chain_role: Developer / producer
+    country: United Kingdom / United States
+    stage: Development + operations
+    drill_results_status: Project defined
+    historic_mine_flag: Yes
+    source_confidence: LSE tearsheet + manual review
+    priority: Medium
+    notes: Existing watchlist comparator for UK critical-minerals optionality.
+
+  - ticker: ALK
+    company: Alkemy Capital Investments
+    exchange: MAINMARKET
+    project: Critical-minerals processing platform
+    commodity_focus: Processing / refining
+    ree_class: Critical minerals
+    supply_chain_role: Processor
+    country: United Kingdom
+    stage: Development
+    drill_results_status: Not applicable
+    historic_mine_flag: No
+    source_confidence: LSE tearsheet + manual review
+    priority: Medium
+    notes: Processing role belongs in supply-chain monitoring rather than exploration-only screens.
+
+  - ticker: TIN
+    company: Cornish Metals
+    exchange: MAINMARKET
+    project: South Crofty / United Downs
+    commodity_focus: Tin, copper
+    ree_class: Critical minerals
+    supply_chain_role: Mine developer
+    country: United Kingdom
+    stage: Development
+    drill_results_status: Project defined
+    historic_mine_flag: Yes
+    source_confidence: LSE market data + FTSE analytics
+    priority: Medium
+    notes: FTSE analytics fallback is used where LSE tearsheet is unavailable.
+
+  - ticker: TUN
+    company: Tungsten West
+    exchange: MAINMARKET
+    project: Hemerdon
+    commodity_focus: Tungsten
+    ree_class: Critical minerals
+    supply_chain_role: Mine restart / developer
+    country: United Kingdom
+    stage: Development
+    drill_results_status: Project defined
+    historic_mine_flag: Yes
+    source_confidence: LSE tearsheet + manual review
+    priority: Medium
+    notes: Historic mine flag makes it relevant to the legacy-district thesis.
+
+supply_chain_rankings:
+  - segment: Heavy Rare Earths
+    entity: REEx HREE ranking import
+    role: Project ranking
+    ranking: Import required
+    jurisdiction: Global
+    exposure: Dy/Tb/HREE projects
+    source: Rare Earth Exchanges
+    status: Manual import pending
+    notes: Prioritise back-page companies with little market attention and no drill results.
+
+  - segment: Light Rare Earths
+    entity: REEx LREE ranking import
+    role: Project ranking
+    ranking: Import required
+    jurisdiction: Global
+    exposure: NdPr/LREE projects
+    source: Rare Earth Exchanges
+    status: Manual import pending
+    notes: Link LREE project ranking to market cap and stage once exported.
+
+  - segment: Processors
+    entity: REEx processor ranking import
+    role: Processing / separation
+    ranking: Import required
+    jurisdiction: Global
+    exposure: Separation and oxide processing
+    source: Rare Earth Exchanges
+    status: Manual import pending
+    notes: Compare processors against listed watchlist names and strategic partners.
+
+  - segment: Magnets
+    entity: REEx magnet-maker ranking import
+    role: Magnet manufacturing
+    ranking: Import required
+    jurisdiction: Global
+    exposure: NdFeB magnets
+    source: Rare Earth Exchanges
+    status: Manual import pending
+    notes: Track downstream makers as strategic-demand and offtake signals.
+
+  - segment: Watchlist
+    entity: PENSANA PLC
+    role: Mine developer + processor
+    ranking: To classify
+    jurisdiction: Angola / United Kingdom
+    exposure: NdPr magnet metals
+    source: LSE + manual review
+    status: Active watch
+    notes: Link to LREE/processors ranking when REEx export is available.
+
+  - segment: Watchlist
+    entity: RAINBOW RARE EARTHS LIMITED
+    role: Developer + processor
+    ranking: To classify
+    jurisdiction: South Africa
+    exposure: Rare earths from phosphogypsum
+    source: LSE + manual review
+    status: Active watch
+    notes: Candidate for processor and rare-earth project ranking enrichment.
+
+  - segment: Watchlist
+    entity: MKANGO RESOURCES LTD
+    role: Explorer + recycling exposure
+    ranking: To classify
+    jurisdiction: Malawi / United Kingdom
+    exposure: Rare earths and recycling
+    source: LSE + manual review
+    status: Active watch
+    notes: Candidate for LREE and recycling/processors ranking enrichment.
+
+catalysts:
+  - ticker: PRE
+    company: Pensana
+    catalyst: Funding and construction milestones
+    category: Financing / development
+    timing: Next update
+    status: Monitor
+    impact: High
+    source: Company RNS / LSE
+    owner: Research
+    notes: Key for de-risking Longonjo and Saltend.
+
+  - ticker: MKA
+    company: Mkango Resources
+    catalyst: Rare earths and recycling platform update
+    category: Development
+    timing: Watchlist
+    status: Monitor
+    impact: High
+    source: Company RNS / REEx import
+    owner: Research
+    notes: Tie to LREE and processor/recycling ranking once imported.
+
+  - ticker: RBW
+    company: Rainbow Rare Earths
+    catalyst: Phalaborwa development and process update
+    category: Development
+    timing: Watchlist
+    status: Monitor
+    impact: High
+    source: Company RNS / REEx import
+    owner: Research
+    notes: Track as rare-earth processing and secondary-source project.
+
+  - ticker: REE
+    company: Altona Rare Earths
+    catalyst: Drill results / resource definition
+    category: Exploration
+    timing: Watchlist
+    status: Monitor
+    impact: High
+    source: Company RNS / REEx import
+    owner: Research
+    notes: Early-stage optionality screen candidate.
+
+  - ticker: EEE
+    company: Empire Metals
+    catalyst: Pitfield resource/process update
+    category: Exploration / development
+    timing: Watchlist
+    status: Monitor
+    impact: High
+    source: Company RNS / LSE
+    owner: Research
+    notes: Add titanium-specific milestone tracking.
+
+  - ticker: FOX
+    company: Focus Xplore
+    catalyst: Post-Katoro strategic reset and project update
+    category: Corporate / exploration
+    timing: Watchlist
+    status: Monitor
+    impact: Medium
+    source: Company RNS / LSE
+    owner: Research
+    notes: Requested as KAT; current LSE ticker is FOX.
+
+  - ticker: POW
+    company: Power Metal Resources
+    catalyst: Project-generator portfolio catalyst
+    category: Exploration
+    timing: Watchlist
+    status: Monitor
+    impact: High
+    source: Company RNS / LSE
+    owner: Research
+    notes: Track drill results, spin-outs, and portfolio monetisation.
+
+  - ticker: ATM
+    company: Andrada Mining
+    catalyst: Uis tin/lithium/tantalum production and development update
+    category: Operations / development
+    timing: Watchlist
+    status: Monitor
+    impact: High
+    source: Company RNS / LSE
+    owner: Research
+    notes: Useful producer/developer comparator.
+
+  - ticker: TM1
+    company: Technology Minerals
+    catalyst: Battery recycling and project development update
+    category: Recycling / development
+    timing: Watchlist
+    status: Monitor
+    impact: Medium
+    source: Company RNS / LSE
+    owner: Research
+    notes: Track recycling scale-up as supply-chain exposure.
+
+  - ticker: REEx
+    company: Rare Earth Exchanges
+    catalyst: Import HREE/LREE, processors, and magnet rankings
+    category: Data enrichment
+    timing: Manual import
+    status: Pending
+    impact: High
+    source: Rare Earth Exchanges
+    owner: Research
+    notes: Do not store credentials; use manual export or compliant integration.

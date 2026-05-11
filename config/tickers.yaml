@@ -1,0 +1,199 @@
+stocks:
+  PRE:
+    name: Pensana
+    ticker: PRE
+    exchange: LSE
+    investiny: PRE.L
+    lse_chat: pensana
+    focus:
+      - rare earths
+      - NdPr
+      - processing
+
+  MKA:
+    name: Mkango Resources
+    ticker: MKA
+    exchange: LSE
+    investiny: MKA.L
+    lse_chat: mkango-resources
+    focus:
+      - rare earths
+      - recycling
+
+  RBW:
+    name: Rainbow Rare Earths
+    ticker: RBW
+    exchange: LSE
+    investiny: RBW.L
+    lse_chat: rainbow-rare-earths
+    focus:
+      - rare earths
+      - phosphogypsum
+
+  REE:
+    name: Altona Rare Earths
+    ticker: REE
+    exchange: LSE
+    investiny: REE.L
+    lse_chat: altona-rare-earths
+    focus:
+      - rare earths
+      - exploration
+
+  EEE:
+    name: Empire Metals
+    ticker: EEE
+    exchange: LSE
+    investiny: EEE.L
+    lse_chat: empire-metals
+    focus:
+      - titanium
+      - critical minerals
+
+  GWMO:
+    name: Great Western Mining
+    ticker: GWMO
+    exchange: LSE
+    investiny: GWMO.L
+    lse_chat: great-western-mining
+    focus:
+      - copper
+      - gold
+      - critical minerals
+
+  FOX:
+    name: Focus Xplore
+    former_name: Katoro Gold
+    former_ticker: KAT
+    ticker: FOX
+    exchange: LSE
+    investiny: FOX.L
+    lse_chat: focus-xplore
+    focus:
+      - critical minerals
+      - exploration
+
+  POW:
+    name: Power Metal Resources
+    ticker: POW
+    exchange: LSE
+    investiny: POW.L
+    lse_chat: power-metal-resources
+    focus:
+      - critical minerals
+      - project generator
+
+  UFO:
+    name: Alien Metals
+    ticker: UFO
+    exchange: LSE
+    investiny: UFO.L
+    lse_chat: alien-metals
+    focus:
+      - iron ore
+      - silver
+      - base metals
+
+  KAV:
+    name: Kavango Resources
+    ticker: KAV
+    exchange: LSE
+    investiny: KAV.L
+    lse_chat: kavango-resources
+    focus:
+      - copper
+      - gold
+      - exploration
+
+  ATM:
+    name: Andrada Mining
+    ticker: ATM
+    exchange: LSE
+    investiny: ATM.L
+    lse_chat: andrada-mining
+    focus:
+      - tin
+      - lithium
+      - tantalum
+
+  TGR:
+    name: Tirupati Graphite
+    requested_name: Tirupati Graphite
+    ticker: TGR
+    exchange: LSE
+    investiny: TGR.L
+    lse_chat: tirupati-graphite
+    focus:
+      - graphite
+      - battery materials
+
+  IRON:
+    name: Ironveld
+    ticker: IRON
+    exchange: LSE
+    investiny: IRON.L
+    lse_chat: ironveld
+    focus:
+      - iron
+      - vanadium
+      - titanium
+
+  CRCL:
+    name: Corcel
+    ticker: CRCL
+    exchange: LSE
+    investiny: CRCL.L
+    lse_chat: corcel
+    focus:
+      - battery metals
+      - energy transition
+
+  TM1:
+    name: Technology Minerals
+    ticker: TM1
+    exchange: LSE
+    investiny: TM1.L
+    lse_chat: technology-minerals
+    focus:
+      - battery metals
+      - recycling
+
+  SML:
+    name: Strategic Minerals
+    ticker: SML
+    exchange: LSE
+    investiny: SML.L
+    lse_chat: strategic-minerals
+    focus:
+      - tungsten
+      - tin
+      - copper
+
+  ALK:
+    name: Alkemy Capital Investments
+    ticker: ALK
+    exchange: LSE
+    investiny: ALK.L
+    lse_chat: alkemy-capital-investments
+    focus:
+      - processing
+      - battery materials
+
+  TIN:
+    name: Cornish Metals
+    ticker: TIN
+    exchange: LSE
+    investiny: TIN.L
+    lse_chat: cornish-metals
+    focus:
+      - tin
+      - copper
+
+  TUN:
+    name: Tungsten West
+    ticker: TUN
+    exchange: LSE
+    investiny: TUN.L
+    lse_chat: tungsten-west
+    focus:
+      - tungsten

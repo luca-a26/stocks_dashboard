@@ -1,0 +1,8 @@
+[tool.pytest.ini_options]
+addopts = "-p no:cacheprovider"
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

@@ -1,0 +1,29 @@
+general:
+  timezone: "Europe/London"
+  report_time: "09:00"
+  lookback_days: 365
+
+sentiment:
+  twitter:
+    max_tweets: 150
+  lse_chat:
+    max_posts: 100
+
+analysis:
+  horizons:
+    short: 90
+    medium: 270
+    long: 540
+
+scoring:
+  weights:
+    short: 0.10
+    medium: 0.45
+    long: 0.20
+    sentiment: 0.25
+
+storage:
+  snapshot_path: "storage/snapshots"
+
+telegram:
+  parse_mode: "Markdown"

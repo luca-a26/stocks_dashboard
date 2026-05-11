@@ -1,14 +1,55 @@
-# DASHBOARD INSTRUCTIONS
-Dashboard project to view summary and information on a chosen list of company tickers
+# Strategic Metals Dashboard
 
-Requirements:
-In terminal/cmd/powershell, set current directory to the folder containing the project (cd 'project folder path'), then run (pip install -r requirements.txt). This should install all necessary modules, if you run into any issues in the running of scripts just install the library terminal tells you to (e.g. pip install pandas). 
+Professional watchlist dashboard for monitoring strategic metals companies with a fundamentals-first scoring model.
 
-Tickers naming convention:
-To choose tickers to load into dashboard for selection, modify the tickers list in the TA.py file. Tickers may require a specific suffix after if they belong to different exchanges. The yahoo finance module likely sets US stocks to standard. An example of this is for tickers on the London stock exchange, which requires the .L suffix (e.g. PRE.L, SML.L).
+## Current Scope
 
-API keys:
-API Keys are stored in the .env file. This has been left empty in this repository. Please enter your own API key into this file. (open as txt file/notebook, and simply add your key into the empty space). If using gemini, which is currently the only working LLM for this, you will need to generate an API key then set up billing, even to use the free tier. 
+- Dash web dashboard with watchlist KPIs, ranked candidates, filtering, sorting, and score highlighting.
+- REE project pipeline, supply-chain ranking tracker, and catalyst tracker for discovery work.
+- YAML-driven company universe in `config/tickers.yaml`.
+- YAML-driven discovery workflow in `config/ree_pipeline.yaml`.
+- Runtime logging to `logs/dashboard.log`.
+- GitHub-ready workflow, CI, issue templates, pull request template, and contribution standards.
 
-Running the dashboard:
-Open dashpy.py either via cmd, powershell or whatever python editor you prefer. When you run the file, the terminal will return all outputs. Scroll through and look for an server address (should look like http://127.0.0.1:8050/, this means the server is local to your machine). CTRL + click that link, or copy paste, to open in browser.
+## Quick Start
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python -m dashboard.dashboard
+```
+
+The dashboard runs locally at the URL printed by Dash, usually `http://127.0.0.1:8050`.
+
+## Project Layout
+
+```text
+analysis/          Scoring and analytical model code
+config/            Watchlist and runtime configuration
+dashboard/         Dash app and dashboard assets
+data/              Data access, config helpers, storage helpers, logging
+docs/              Architecture, logging, and operating notes
+tests/             Unit tests for dashboard and configuration behavior
+logs/              Local runtime logs, ignored by Git except .gitkeep
+storage/           Local caches and generated snapshots, ignored by Git except .gitkeep
+```
+
+## Verification
+
+```powershell
+python -m compileall analysis data dashboard tests
+python -m pytest
+```
+
+## Methodology
+
+The scoring, rating bands, display calculations, chart counts, and manual discovery workflow are documented in `docs/METHODOLOGY.md`.
+
+## Data Policy
+
+Generated cache files, snapshots, notebooks, and local logs are not intended for source control. Keep source code, configuration, tests, and documentation in Git; keep runtime data in ignored storage folders unless a deliberate fixture is needed.
+
+## Rare Earth Discovery Workflow
+
+Use `config/ree_pipeline.yaml` for manual REEx-derived entries, early-stage candidates, project-stage classification, supply-chain ranking imports, and catalysts. Do not store third-party credentials in this repository.

@@ -1,0 +1,22 @@
+name: Dashboard Change
+description: Request a dashboard UI, scoring, or workflow enhancement.
+title: "[Dashboard]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired Outcome
+      description: What should the dashboard help the user decide or monitor?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Include fields, layout, scoring, or tracking changes.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: What would make this complete?
