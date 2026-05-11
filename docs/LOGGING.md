@@ -18,6 +18,11 @@ python -m dashboard.dashboard
 - Data provider failures and retries.
 - Dashboard data-load failures.
 - Scoring exceptions with ticker context.
+- Ticker-universe load size and default top-100 selection source.
+- Score-cache hits, misses, stale reads, and writes.
+- On-demand detail fetches from the search workflow.
+- Search query match counts and search/detail errors.
+- Scoring fallback status such as `metadata_only`, `partial`, or `stale`.
 - Operational warnings that would help diagnose stale or missing data.
 
 ## What Not To Log

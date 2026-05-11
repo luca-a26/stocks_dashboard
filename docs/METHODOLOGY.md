@@ -95,6 +95,14 @@ Cache time-to-live:
 
 If a live request fails and a cache file exists, the dashboard uses the stale cache and logs a warning. If no cache exists, the failure is surfaced through the data-loading path.
 
+On-demand scored ticker details are cached separately under:
+
+```text
+storage/cache/scores/
+```
+
+The score cache uses `SCORE_CACHE_TTL_HOURS`, defaulting to 6 hours. Fresh cached scores can be used in the default top-100 ranking. Stale cached scores are labelled with `score_status = stale` if they are displayed after a failed refresh.
+
 ## Unit Normalisation
 
 ### Revenue LFY
@@ -158,148 +166,173 @@ The table label states which basis is used:
 0.1% net debt/equity
 ```
 
-## Score Calculation
+## Hybrid Rare-Earth Score
 
-Each company receives a conservative 0-10 fundamental score.
-
-### Base Score
-
-Every company starts at:
+The current dashboard score is a rare-earth-specific hybrid composite on a 0-10 scale:
 
 ```text
-score = 5.0
+composite_score =
+  technical_asset_score * 0.55
+  + commercial_financial_score * 0.25
+  + strategic_supply_chain_score * 0.20
 ```
 
-This is a neutral baseline. The current model is not designed to aggressively rank early-stage companies that lack complete financial data.
+All component scores and the final composite are capped between 0 and 10. Missing values are not fabricated. They are scored neutrally where appropriate, recorded in `missing_data_fields`, and reflected in `scoring_confidence`.
 
-### Market Cap Availability
+### Technical Asset Score
 
-If LSE market capitalisation is available:
+Technical quality is the largest component. It is a weighted score:
 
 ```text
-score adjustment = 0
-driver = "LSE market cap available"
+resource_scale_grade       -> 18%
+magnet_basket_quality      -> 18%
+mineralogy_quality         -> 18%
+metallurgy_derisking       -> 23%
+resource_confidence        -> 13%
+impurity_penalty_profile   -> 10%
 ```
 
-Market cap availability is currently a confidence/coverage driver, not a scoring boost.
+The model rewards defined resources, TREO grade, resource scale, contained TREO/NdPr, mine-life evidence, NdPr-rich baskets, HREE/Dy/Tb exposure, understood mineralogy, metallurgical testwork, recovery data, concentrate grades, flowsheet validation, pilot work, resource confidence, and clean impurity profiles.
 
-### Revenue LFY Adjustment
-
-Revenue is scored as follows:
+It records missing fields such as:
 
 ```text
-if revenue_lfy is None:
-    adjustment = 0
-    driver = "Revenue LFY unavailable"
-elif revenue_lfy > 20,000,000:
-    adjustment = +1.0
-    driver = "Revenue-generating (>20M LFY)"
-elif revenue_lfy > 0:
-    adjustment = +0.5
-    driver = "Revenue-generating"
-else:
-    adjustment = -1.0
-    driver = "Pre-revenue / no LFY revenue"
+defined_resource
+treo_grade_pct
+resource_tonnage_mt
+contained_treo_tonnes
+contained_ndpr_tonnes
+ndpr_pct_of_treo
+mineralogy
+metallurgical_testwork
+recovery_pct
+concentrate_grade_pct
+resource_category
+impurity_profile
 ```
 
-Interpretation:
+### Commercial / Financial Score
 
-- Companies with meaningful reported revenue receive a positive adjustment.
-- Companies with small but non-zero revenue receive a smaller positive adjustment.
-- Pre-revenue companies are penalised modestly.
-- Missing revenue does not change the score, because absence can reflect missing tearsheet coverage rather than business quality.
-
-### Debt Adjustment
-
-The dashboard first chooses a debt metric:
+The old revenue/debt logic has been adapted into a broader commercial score:
 
 ```text
-debt_metric = long_term_debt_to_capital_pct if available
-else net_debt_to_equity_pct if available
-else None
+revenue_quality                 -> 20%
+debt_balance_sheet              -> 20%
+cash_runway_or_funding_risk     -> 20%
+study_economics                 -> 20%
+offtake_funding_validation      -> 20%
 ```
 
-Then applies:
+Important changes from the earlier model:
+
+- Pre-revenue developers are not heavily penalised for having no revenue.
+- REE-relevant revenue scores better than unrelated revenue.
+- Missing revenue or debt is neutral but logged as missing evidence.
+- Debt is scored as balance-sheet risk, with zero/low debt rewarded and high debt penalised.
+- Cash runway, funding risk, study economics, government support, strategic investors, offtake, funding packages, and development route validation can improve the score when those fields exist.
+
+### Strategic Supply Chain Score
+
+Strategic value is scored as:
 
 ```text
-if debt_metric is None:
-    adjustment = 0
-    driver = "Debt metric unavailable"
-elif debt_metric == 0:
-    adjustment = +1.0
-    driver = "No LSE-reported debt burden"
-elif debt_metric <= 25:
-    adjustment = +0.5
-    driver = "Moderate LSE-reported debt burden"
-elif debt_metric >= 50:
-    adjustment = -1.5
-    driver = "High LSE-reported debt burden"
-else:
-    adjustment = 0
+jurisdiction_quality             -> 25%
+processing_depth                 -> 35%
+ex_china_supply_chain_value      -> 25%
+esg_permitting_social_licence    -> 15%
 ```
 
-Interpretation:
+Processing depth is intentionally important. Exploration-only assets score lower, concentrate routes score moderately, carbonate/hydroxide routes score higher, separated oxides score high, and metals/alloys/magnets/recycling score very high.
 
-- Zero debt burden is rewarded.
-- Low/moderate debt burden is rewarded modestly.
-- High debt burden is penalised.
-- Debt metrics between 25 and 50 receive no adjustment in the current model.
+Processor, recycler, and magnet businesses can score well through strategic supply-chain relevance even if they do not own a mineral deposit.
 
-### 52-Week Range Availability
+### Stage Gates
 
-If both 52-week low and high are available:
+Stage gates cap weakly evidenced mining projects so early-stage names cannot score like advanced projects without resource and metallurgy evidence:
 
 ```text
-score adjustment = 0
-driver = "52-week trading range available"
+no defined resource                    -> max composite score 5.5
+no metallurgical testwork              -> max composite score 6.0
+no recovery data                       -> max composite score 6.5
+no scoping study / PEA / PFS / DFS      -> max composite score 7.0
+no funding/offtake/development route   -> max composite score 8.0
 ```
 
-This is currently a coverage/diagnostic driver, not a scoring input.
-
-### Score Bounds
-
-After all adjustments:
+The dashboard exposes applied gates in `applied_stage_gates`, for example:
 
 ```text
-score = min(max(score, 0), 10)
-score = round(score, 2)
+No defined resource (cap 5.5)
+No metallurgical testwork (cap 6.0)
 ```
 
-The score cannot go below 0 or above 10.
+Downstream processors/recyclers/magnet companies are not automatically capped by mining-resource gates when the missing resource is not central to their business model.
+
+### Confidence
+
+`scoring_confidence` / `data_quality_score` is a 0-10 coverage score based on data completeness, freshness, and presence of core fields. Market cap and 52-week range remain confidence/coverage evidence, not direct asset-quality boosts.
+
+## Preliminary Metadata Score
+
+The large ticker universe is searchable at startup without downloading full fundamentals. Companies that only have cheap metadata receive a low-confidence preliminary score aligned to the hybrid model.
+
+Metadata-only scoring starts around 4.0 and applies modest boosts for:
+
+```text
+priority
+producer/developer status
+processor/recycler/magnet role
+HREE / Dy / Tb exposure
+NdPr / rare-earth exposure
+large market-cap tier
+```
+
+Metadata-only companies are capped at 5.5 unless verified technical fields exist. They are clearly labelled as `metadata_only` and should be treated as discovery triage, not full analysis.
+
+## Score Status
+
+The ranked table includes score status so full and preliminary scores are not silently mixed:
+
+```text
+full          -> detailed market, financial, and technical data are available
+partial       -> some detailed data exists, but key financial or technical fields are missing
+metadata_only -> only lightweight universe metadata is available
+stale         -> cached detailed data is outside the TTL and live refresh failed
+```
+
+The displayed `Score` column uses `composite_score` for sorting. `Full Score`, `Prelim Score`, `Tech Score`, `Commercial Score`, `Strategic Score`, and `Confidence` remain separate columns.
 
 ## Rating Labels
 
 The table converts numeric scores into simple rating labels:
 
 ```text
-score >= 7      -> High conviction
-score >= 5      -> Constructive
-score >= 3      -> Watch
-score < 3       -> Review
+score >= 7.5    -> High-quality / advanced
+score >= 6.0    -> Strong watchlist
+score >= 4.5    -> Developing opportunity
+score >= 3.0    -> Early / speculative
+score < 3.0     -> Low confidence / insufficient evidence
 ```
 
 These are dashboard triage labels, not buy/sell/hold recommendations.
 
-## Composite Score
+## Explainability Output
 
-The current composite score is identical to the fundamental score:
+Each scored company exposes:
 
-```text
-composite_score = fundamental_score
-```
+- `composite_score`
+- `technical_asset_score`
+- `commercial_financial_score`
+- `strategic_supply_chain_score`
+- `scoring_confidence`
+- `score_status`
+- `rating_label`
+- `score_breakdown`
+- `missing_data_fields`
+- `applied_stage_gates`
+- `reason_codes`
+- `explanation_bullets`
 
-Earlier technical and sentiment surfaces were removed. The architecture still allows future score components to be added, but they are not currently active.
-
-Future composite scoring could use a weighted model such as:
-
-```text
-composite = (fundamental_score * w1)
-          + (project_score * w2)
-          + (catalyst_score * w3)
-          + (supply_chain_score * w4)
-```
-
-No such weighted composite is currently used.
+Reason codes are intentionally short for dashboard display, such as `Strong NdPr exposure`, `Defined JORC/NI 43-101 resource`, `Metallurgical recovery data unavailable`, `Concentrate-only processing route`, `HREE exposure present`, `Debt data unavailable`, `No published study economics`, and `Advanced downstream processing capability`.
 
 ## Display Calculations
 

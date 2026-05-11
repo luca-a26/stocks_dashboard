@@ -14,6 +14,8 @@ The format follows Keep a Changelog style, with an `Unreleased` section for work
 - `config/ree_pipeline.yaml` as the manual home for REEx-derived discovery candidates, processor/magnet-maker rankings, and catalysts.
 - Expanded watchlist with requested LSE/AIM critical-minerals names and added exchange/segment filter columns.
 - Full methodology documentation for scoring, rating labels, display calculations, charts, and discovery workflow.
+- Scalable ticker-universe architecture with metadata search, top-100 default ranking, lazy fundamentals loading, score-status labels, and score-cache support.
+- Rare-earth hybrid scoring framework with technical asset, commercial/financial, and strategic supply-chain component scores, confidence, stage gates, missing-data reporting, and reason codes.
 - Runtime logging to `logs/dashboard.log`.
 - GitHub-ready repository infrastructure, including CI, issue templates, pull request template, `.gitignore`, `.gitattributes`, and `.editorconfig`.
 - Project operating docs in `README.md`, `WORKFLOW.md`, `AGENTS.md`, and `docs/`.
@@ -22,7 +24,7 @@ The format follows Keep a Changelog style, with an `Unreleased` section for work
 ### Changed
 
 - Made `data.load_tickers()` side-effect free so config loading no longer downloads market data.
-- Consolidated dashboard data into an LSE-backed fundamentals-first model.
+- Consolidated dashboard data into an explainable rare-earth hybrid scoring model while preserving LSE-backed financial metrics.
 
 ### Removed
 

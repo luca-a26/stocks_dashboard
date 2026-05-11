@@ -7,9 +7,9 @@ from typing import Any
 
 import pandas as pd
 import plotly.graph_objects as go
-from dash import Dash, Input, Output, dcc, html
+from dash import Dash, Input, Output, State, dcc, html, no_update
 
-from analysis.composite import analyze_all_stocks
+from analysis.composite import load_default_ranked_stocks, load_detailed_stock
 from dashboard.components import data_table
 from dashboard.discovery_view_model import (
     CATALYST_COLUMNS,
@@ -19,25 +19,27 @@ from dashboard.discovery_view_model import (
     build_project_rows,
     build_supply_chain_rows,
 )
-from dashboard.view_model import TABLE_COLUMNS, build_dashboard_rows
+from dashboard.view_model import SEARCH_COLUMNS, TABLE_COLUMNS, build_dashboard_rows, build_universe_search_rows
 from data.discovery import (
     count_by,
     load_catalysts,
     load_project_pipeline,
     load_supply_chain_rankings,
 )
+from data.universe import load_ticker_universe, preliminary_score, search_ticker_universe
 from data.utils import get_logger
 
 ASSET_DIR = Path(__file__).resolve().parent / "assets"
 
 
-def load_dashboard_frame() -> tuple[pd.DataFrame, str | None]:
+def load_dashboard_frame() -> tuple[pd.DataFrame, str | None, str]:
     try:
-        rows = build_dashboard_rows(analyze_all_stocks())
-        return pd.DataFrame(rows, columns=TABLE_COLUMNS), None
+        stocks, source = load_default_ranked_stocks(limit=100)
+        rows = build_dashboard_rows(stocks)
+        return pd.DataFrame(rows, columns=TABLE_COLUMNS), None, source
     except Exception as exc:
         get_logger(__name__).exception("Dashboard data load failed")
-        return pd.DataFrame(columns=TABLE_COLUMNS), str(exc)
+        return pd.DataFrame(columns=TABLE_COLUMNS), str(exc), "load failed"
 
 
 def _metric_card(label: str, value: str, detail: str, accent: str) -> html.Div:
@@ -50,8 +52,8 @@ def _metric_card(label: str, value: str, detail: str, accent: str) -> html.Div:
 def _metric_cards(df: pd.DataFrame) -> list[html.Div]:
     if df.empty:
         return [
-            _metric_card("Coverage", "0", "watchlist names", "teal"),
-            _metric_card("Average Score", "n/a", "fundamental model", "gold"),
+            _metric_card("Coverage", "0", "ranked companies", "teal"),
+            _metric_card("Average Score", "n/a", "mixed score model", "gold"),
             _metric_card("Leader", "n/a", "highest score", "blue"),
             _metric_card("Review Queue", "0", "scores below 3", "red"),
         ]
@@ -61,8 +63,8 @@ def _metric_cards(df: pd.DataFrame) -> list[html.Div]:
     review_count = int((df["Score"] < 3).sum())
 
     return [
-        _metric_card("Coverage", str(len(df)), "watchlist names", "teal"),
-        _metric_card("Average Score", f"{avg_score:.1f}", "fundamental model", "gold"),
+        _metric_card("Coverage", str(len(df)), "ranked companies", "teal"),
+        _metric_card("Average Score", f"{avg_score:.1f}", "mixed score model", "gold"),
         _metric_card("Leader", leader["Ticker"], str(leader["Company"]), "blue"),
         _metric_card("Review Queue", str(review_count), "scores below 3", "red"),
     ]
@@ -99,12 +101,13 @@ def _leaderboard(df: pd.DataFrame) -> html.Div:
     return html.Div(items, className="ranked-list")
 
 
-def _status_children(error: str | None = None) -> list[html.Span]:
+def _status_children(error: str | None = None, source: str | None = None) -> list[html.Span]:
     refreshed = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     status = "Data warning" if error else "Live fundamentals"
     class_name = "status-pill" if error else "status-pill status-live"
     return [
         html.Span(status, className=class_name),
+        html.Span(f"Top 100: {source or 'metadata'}", className="status-pill"),
         html.Span(f"Refreshed {refreshed}", className="status-pill"),
     ]
 
@@ -174,11 +177,53 @@ def _donut_chart(title: str, rows: list[dict[str, Any]]) -> go.Figure:
     return figure
 
 
+def _search_panel() -> html.Div:
+    return html.Div(
+        [
+            html.Div(
+                [
+                    dcc.Input(
+                        id="universe-search-input",
+                        type="search",
+                        debounce=True,
+                        placeholder="Search ticker, company, exchange, commodity, country, or supply-chain role",
+                        className="universe-search-input",
+                    ),
+                    html.Button("Load Details", id="load-selected-button", n_clicks=0, className="action-button"),
+                    html.Button("Add To Ranked", id="add-selected-button", n_clicks=0, className="action-button secondary"),
+                ],
+                className="search-controls",
+            ),
+            dcc.Loading(
+                data_table(
+                    "universe-results-table",
+                    SEARCH_COLUMNS,
+                    [],
+                    page_size=6,
+                    numeric_columns=["Prelim Score"],
+                    wide_columns=["Company", "Commodity", "Role"],
+                    row_selectable="single",
+                ),
+                type="dot",
+            ),
+            dcc.Loading(html.Div("Search the metadata universe, then load one company on demand.", id="detail-status", className="detail-status"), type="dot"),
+            html.Div("", id="add-status", className="detail-status"),
+        ],
+        className="search-panel",
+    )
+
+
 def _watchlist_tab(df: pd.DataFrame, error: str | None) -> html.Div:
     return html.Div(
         [
-            html.Section(_metric_cards(df), className="metric-grid"),
+            html.Section(_metric_cards(df), className="metric-grid", id="watchlist-metrics"),
             html.Div(error, className="error-banner") if error else None,
+            _panel(
+                "Universe Search",
+                "Find And Add Companies",
+                _search_panel(),
+                "table-panel full-width-panel",
+            ),
             html.Section(
                 [
                     _panel(
@@ -191,6 +236,12 @@ def _watchlist_tab(df: pd.DataFrame, error: str | None) -> html.Div:
                             page_size=12,
                             numeric_columns=[
                                 "Score",
+                                "Full Score",
+                                "Prelim Score",
+                                "Tech Score",
+                                "Commercial Score",
+                                "Strategic Score",
+                                "Confidence",
                                 "Market Cap",
                                 "Last Price",
                                 "Revenue LFY",
@@ -198,7 +249,16 @@ def _watchlist_tab(df: pd.DataFrame, error: str | None) -> html.Div:
                                 "Shares Outstanding",
                                 "Volume",
                             ],
-                            wide_columns=["Company", "Alias", "Drivers", "Source"],
+                            wide_columns=[
+                                "Company",
+                                "Alias",
+                                "Commodity",
+                                "Role",
+                                "Stage Gates",
+                                "Missing Data",
+                                "Drivers",
+                                "Source",
+                            ],
                         ),
                         "table-panel",
                     ),
@@ -211,7 +271,7 @@ def _watchlist_tab(df: pd.DataFrame, error: str | None) -> html.Div:
                                 ],
                                 className="panel-heading",
                             ),
-                            _leaderboard(df),
+                            html.Div(_leaderboard(df), id="top-candidates-list"),
                             html.Div(
                                 [
                                     html.Span("Tracking"),
@@ -418,6 +478,8 @@ def build_app_shell() -> html.Main:
     return html.Main(
         [
             dcc.Interval(id="load-trigger", interval=500, max_intervals=1, n_intervals=0),
+            dcc.Store(id="ranked-records-store"),
+            dcc.Store(id="selected-detail-store"),
             html.Section(
                 [
                     html.Div(
@@ -425,7 +487,7 @@ def build_app_shell() -> html.Main:
                             html.P("Strategic Metals", className="eyebrow"),
                             html.H1("Portfolio Intelligence Dashboard"),
                             html.P(
-                                "LSE fundamentals, REE discovery screens, supply-chain rankings and catalyst tracking.",
+                                "Searchable strategic-metals universe, lazy LSE fundamentals, supply-chain rankings and catalyst tracking.",
                                 className="hero-copy",
                             ),
                         ],
@@ -453,6 +515,7 @@ app = Dash(
     assets_folder=str(ASSET_DIR),
     title="Strategic Metals Dashboard",
     update_title=None,
+    suppress_callback_exceptions=True,
 )
 app.layout = build_app_shell()
 server = app.server
@@ -461,11 +524,104 @@ server = app.server
 @app.callback(
     Output("status-row", "children"),
     Output("dashboard-content", "children"),
+    Output("ranked-records-store", "data"),
     Input("load-trigger", "n_intervals"),
 )
-def render_dashboard(_n_intervals: int) -> tuple[list[html.Span], list]:
-    df, error = load_dashboard_frame()
-    return _status_children(error), _dashboard_sections(df, error)
+def render_dashboard(_n_intervals: int) -> tuple[list[html.Span], list, list[dict[str, Any]]]:
+    df, error, source = load_dashboard_frame()
+    records = df.to_dict("records")
+    return _status_children(error, source), _dashboard_sections(df, error), records
+
+
+@app.callback(
+    Output("stock-table", "data"),
+    Output("watchlist-metrics", "children"),
+    Output("top-candidates-list", "children"),
+    Input("ranked-records-store", "data"),
+)
+def update_ranked_view(records: list[dict[str, Any]] | None) -> tuple[list[dict[str, Any]], list[html.Div], html.Div]:
+    records = records or []
+    df = pd.DataFrame(records, columns=TABLE_COLUMNS)
+    return records, _metric_cards(df), _leaderboard(df)
+
+
+@app.callback(
+    Output("universe-results-table", "data"),
+    Input("universe-search-input", "value"),
+)
+def search_universe(query: str | None) -> list[dict[str, Any]]:
+    if not query:
+        return []
+    records = []
+    for record in search_ticker_universe(query, load_ticker_universe(), limit=25):
+        record = dict(record)
+        record["preliminary_score"] = preliminary_score(record)
+        records.append(record)
+    return build_universe_search_rows(records)
+
+
+@app.callback(
+    Output("selected-detail-store", "data"),
+    Output("detail-status", "children"),
+    Input("load-selected-button", "n_clicks"),
+    State("universe-results-table", "selected_rows"),
+    State("universe-results-table", "data"),
+    prevent_initial_call=True,
+)
+def load_selected_detail(
+    n_clicks: int,
+    selected_rows: list[int] | None,
+    rows: list[dict[str, Any]] | None,
+) -> tuple[dict[str, Any] | Any, html.Div | str]:
+    if not n_clicks:
+        return no_update, no_update
+    if not selected_rows or not rows:
+        return no_update, "Select a company from the search results first."
+
+    selected = rows[selected_rows[0]]
+    ticker = selected.get("Ticker")
+    if not ticker:
+        return no_update, "Selected row has no ticker."
+
+    try:
+        detail = build_dashboard_rows([load_detailed_stock(ticker)])[0]
+    except Exception as exc:
+        get_logger(__name__).exception("Search detail load failed for %s", ticker)
+        return no_update, f"Could not load {ticker}: {exc}"
+
+    return detail, html.Div(
+        [
+            html.Strong(f"{detail['Ticker']} loaded"),
+            html.Span(f"{detail['Company']} | score {detail['Score']} | {detail['Score Status']}"),
+        ],
+        className="detail-loaded",
+    )
+
+
+@app.callback(
+    Output("ranked-records-store", "data", allow_duplicate=True),
+    Output("add-status", "children"),
+    Input("add-selected-button", "n_clicks"),
+    State("selected-detail-store", "data"),
+    State("ranked-records-store", "data"),
+    prevent_initial_call=True,
+)
+def add_selected_to_ranked(
+    n_clicks: int,
+    detail: dict[str, Any] | None,
+    records: list[dict[str, Any]] | None,
+) -> tuple[list[dict[str, Any]] | Any, str]:
+    if not n_clicks:
+        return no_update, ""
+    if not detail:
+        return no_update, "Load company details before adding it to ranked candidates."
+
+    records = records or []
+    ticker = detail.get("Ticker")
+    next_records = [row for row in records if row.get("Ticker") != ticker]
+    next_records.append(detail)
+    next_records.sort(key=lambda row: float(row.get("Score") or 0), reverse=True)
+    return next_records, f"{ticker} added to ranked candidates."
 
 
 if __name__ == "__main__":

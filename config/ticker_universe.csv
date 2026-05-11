@@ -1,0 +1,20 @@
+ticker,exchange,company_name,country,sector,commodity_tags,supply_chain_role,stage,market_cap_tier,source,notes,priority
+PRE,LSE,Pensana,Angola / United Kingdom,Basic Materials,rare earths|NdPr|processing,Mine developer + processor,Development,,Manual seed,"Track Longonjo, Saltend, funding, offtake, and construction milestones.",High
+MKA,LSE,Mkango Resources,Malawi / United Kingdom,Basic Materials,rare earths|recycling,Explorer + recycling exposure,Development / recycling platform,,Manual seed,Link to LREE and processor/recycling ranking when imported.,High
+RBW,LSE,Rainbow Rare Earths,South Africa,Basic Materials,rare earths|phosphogypsum|processing,Developer + processor,Development,,Manual seed,Phalaborwa secondary-source rare earth project.,High
+REE,LSE,Altona Rare Earths,Africa,Basic Materials,rare earths|exploration,Explorer,Exploration,,Manual seed,Candidate for HREE/LREE ranking enrichment.,High
+EEE,LSE,Empire Metals,Australia,Basic Materials,titanium|critical minerals,Explorer / developer,Exploration / development,,Manual seed,Track Pitfield resource and process catalysts.,High
+GWMO,LSE,Great Western Mining,United States,Basic Materials,copper|gold|critical minerals,Explorer,Exploration,micro,Manual seed,Historic mining district optionality screen.,Medium
+FOX,LSE,Focus Xplore,Multi-jurisdiction,Basic Materials,critical minerals|exploration,Explorer,Strategic reset / exploration,micro,Manual seed,Former Katoro Gold ticker KAT.,Medium
+POW,LSE,Power Metal Resources,Multi-jurisdiction,Basic Materials,critical minerals|project generator|uranium,Project generator,Exploration portfolio,,Manual seed,Portfolio catalyst and spin-out monitor.,High
+UFO,LSE,Alien Metals,Australia,Basic Materials,iron ore|silver|base metals,Explorer / developer,Development / exploration,,Manual seed,Track development permitting and funding catalysts.,Medium
+KAV,LSE,Kavango Resources,Botswana / Zimbabwe,Basic Materials,copper|gold|exploration,Explorer,Exploration,,Manual seed,Track drill-result catalysts and portfolio changes.,Medium
+ATM,LSE,Andrada Mining,Namibia,Basic Materials,tin|lithium|tantalum,Producer / developer,Operations + development,,Manual seed,Producer/developer comparator for tin lithium tantalum.,High
+TGR,LSE,Total Graphite,Madagascar / Mozambique,Basic Materials,graphite|battery materials,Producer / developer,Operations / development,,Manual seed,Requested as Tirupati Graphite; LSE currently returns Total Graphite.,Medium
+IRON,LSE,Ironveld,South Africa,Basic Materials,iron|vanadium|titanium,Developer / producer,Development / operations,,Manual seed,Track processing funding and production milestones.,Medium
+CRCL,LSE,Corcel,Multi-jurisdiction,Energy / Basic Materials,battery metals|energy transition,Developer / investment platform,Portfolio development,,Manual seed,Track portfolio strategy and funding catalysts.,Medium
+TM1,LSE,Technology Minerals,United Kingdom / multi-jurisdiction,Basic Materials,battery metals|recycling,Recycler + developer,Development / recycling,,Manual seed,Track recycling scale-up and battery-metals project catalysts.,Medium
+SML,LSE,Strategic Minerals,United Kingdom / United States,Basic Materials,tungsten|tin|copper|magnetite,Developer / producer,Development + operations,,Manual seed,UK critical-minerals optionality comparator.,Medium
+ALK,LSE,Alkemy Capital Investments,United Kingdom,Industrials / Basic Materials,processing|battery materials,Processor,Development,,Manual seed,Processing role belongs in supply-chain monitoring.,Medium
+TIN,LSE,Cornish Metals,United Kingdom,Basic Materials,tin|copper,Mine developer,Development,,Manual seed,FTSE analytics fallback used where tearsheet unavailable.,Medium
+TUN,LSE,Tungsten West,United Kingdom,Basic Materials,tungsten,Mine restart / developer,Development,,Manual seed,Historic mine restart candidate.,Medium

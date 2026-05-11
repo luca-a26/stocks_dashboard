@@ -12,6 +12,7 @@ def data_table(
     page_size: int = 12,
     numeric_columns: list[str] | None = None,
     wide_columns: list[str] | None = None,
+    row_selectable: str | bool | None = None,
 ) -> dash_table.DataTable:
     numeric_columns = numeric_columns or []
     wide_columns = wide_columns or []
@@ -47,6 +48,40 @@ def data_table(
                 "fontWeight": "700",
             },
         ]
+    if "Score Status" in columns:
+        style_data_conditional.extend(
+            [
+                {
+                    "if": {"filter_query": '{Score Status} = "full"', "column_id": "Score Status"},
+                    "backgroundColor": "#dff3ea",
+                    "color": "#0f5132",
+                    "fontWeight": "700",
+                },
+                {
+                    "if": {"filter_query": '{Score Status} = "partial"', "column_id": "Score Status"},
+                    "backgroundColor": "#fff1cf",
+                    "color": "#73510b",
+                    "fontWeight": "700",
+                },
+                {
+                    "if": {"filter_query": '{Score Status} = "stale"', "column_id": "Score Status"},
+                    "backgroundColor": "#fbe3df",
+                    "color": "#8a1f11",
+                    "fontWeight": "700",
+                },
+                {
+                    "if": {"filter_query": '{Score Status} = "metadata_only"', "column_id": "Score Status"},
+                    "backgroundColor": "#e8edf1",
+                    "color": "#334155",
+                    "fontWeight": "700",
+                },
+            ]
+        )
+
+    options: dict[str, Any] = {}
+    if row_selectable:
+        options["row_selectable"] = row_selectable
+        options["selected_rows"] = []
 
     return dash_table.DataTable(
         id=table_id,
@@ -80,4 +115,5 @@ def data_table(
         },
         style_cell_conditional=style_cell_conditional,
         style_data_conditional=style_data_conditional,
+        **options,
     )

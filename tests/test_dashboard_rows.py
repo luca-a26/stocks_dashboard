@@ -37,7 +37,7 @@ def test_build_dashboard_rows_uses_lse_fundamental_fields():
     assert rows[0]["Company"] == "PENSANA PLC"
     assert rows[0]["Exchange"] == "MAINMARKET"
     assert rows[0]["Segment"] == "SET3"
-    assert rows[0]["Rating"] == "Constructive"
+    assert rows[0]["Rating"] == "Strong watchlist"
     assert rows[0]["Market Cap"] == "1.2M"
     assert rows[0]["Last Price"] == "101.2 GBX"
     assert rows[0]["Revenue LFY"] == "5.0M"
