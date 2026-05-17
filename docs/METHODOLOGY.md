@@ -192,6 +192,57 @@ Fallback fields can include:
 
 Fallback-filled rows are labelled in `Source` and `Data Notes`. The dashboard does not hide fallback provenance: if revenue is supplied by the fallback it is scored conservatively and marked as estimated.
 
+### RNS Technical Evidence
+
+The rare-earth score now has a dedicated technical-evidence layer for the fields that matter most to deposit quality but are usually absent from market-data providers:
+
+```text
+mineralogy
+metallurgical_testwork
+recovery_pct
+concentrate_grade_pct
+resource_category
+study_stage
+treo_grade_pct
+resource_tonnage_mt
+contained_treo_tonnes
+contained_ndpr_tonnes
+ndpr_pct_of_treo
+impurity_profile
+thorium_ppm
+uranium_ppm
+capex
+opex
+processing_depth
+```
+
+Tracked evidence lives in:
+
+```text
+config/rns_technical_evidence.csv
+```
+
+Automated refresh output, when enabled, is written to:
+
+```text
+data/rns_technical_evidence.csv
+storage/audit/rns_technical_evidence_audit.json
+```
+
+The refresh command is:
+
+```powershell
+python -m scripts.refresh_rns_technical_evidence
+```
+
+The parser reads recent London Stock Exchange RNS article pages, extracts technical fields from announcement text, records the source title/date/URL, and feeds those fields into the same scoring inputs used by the hybrid methodology. Live RNS fetching is not required at dashboard startup. By default, the dashboard reads tracked/configured evidence and the latest generated snapshot if present. Live refresh can be enabled for deliberate update sessions with:
+
+```powershell
+$env:ENABLE_RNS_TECHNICAL_REFRESH="true"
+```
+
+RNS-derived evidence is visible in the comparison table through `Mineralogy`, `Recovery`, `Study Stage`, `Resource Confidence`, `Impurity Profile`, and `Technical Source`. The company overview modal also shows RNS technical evidence and links to source announcements where available.
+
 ## Caching
 
 LSE data is cached under:

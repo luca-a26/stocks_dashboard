@@ -11,6 +11,7 @@ Professional watchlist dashboard for monitoring strategic metals companies with 
 - Optional London South East Industrial Metals sector import for a broad LSE company universe.
 - YAML-driven discovery workflow in `config/ree_pipeline.yaml`.
 - Runtime logging to `logs/dashboard.log`.
+- RNS-derived technical evidence for mineralogy, recovery, impurity/radioactivity, resource confidence, study stage, and processing depth.
 - GitHub-ready workflow, CI, issue templates, pull request template, and contribution standards.
 
 ## Quick Start
@@ -58,6 +59,8 @@ strategic_supply_chain_score * 20%
 
 The hybrid model is enhanced by a workbook-style benchmark layer for deposit value, NPV, reserve/resource value, downstream revenue, production visibility, NdPr/DyTb exposure, and peer-group context. The dashboard also exposes score status, confidence, missing data, stage gates, benchmark score, peer group, and explanation bullets so scores remain auditable.
 
+Technical evidence that market feeds do not carry is loaded from recent RNS evidence. Tracked analyst-reviewed entries live in `config/rns_technical_evidence.csv`; automated refresh output can be written to `data/rns_technical_evidence.csv`. These fields feed the same technical asset score rather than a separate score, and are shown directly in the table and company overview.
+
 The relative peer comparison popup is separate from the hybrid score. Click a company row in the scoreboard to open a company card, then add up to three more peers. The popup converts existing hybrid score signals into five equal-weight 1-5 relative criteria: grade/deposit quality, commodity price outlook, jurisdiction, dilution risk, and application/strategic relevance. Optional criterion-level analyst overrides live in `config/relative_score_overrides.csv`.
 
 ## Ticker Universe And Lazy Fundamentals
@@ -69,7 +72,9 @@ The dashboard separates cheap company metadata from expensive market data:
 - `storage/cache/london_south_east/industrial_metals_universe.csv` is an ignored generated cache of the London South East Industrial Metals sector constituents.
 - `config/tickers.yaml` remains the curated priority watchlist.
 - `config/ree_pipeline.yaml` enriches project-stage and supply-chain context.
+- `config/rns_technical_evidence.csv` and optional `data/rns_technical_evidence.csv` supply RNS-derived technical fields such as mineralogy, metallurgical testwork, recovery, impurity profile, resource confidence, study stage, capex/opex, and processing depth.
 - `storage/cache/lse/` stores downloaded LSE JSON/PDF payloads.
+- `storage/cache/rns/` stores cached London Stock Exchange RNS article pages used during deliberate technical-evidence refreshes.
 - `storage/cache/scores/` stores on-demand scored ticker detail payloads.
 
 Startup shows the full merged comparison universe from cached scores when available, then London South East sector metadata, tracked metadata, and watchlist fallback ranking. The compact search bar above the dashboard filters the comparison table by company, ticker, exchange, commodity, country, role, status, rating, or source.
@@ -99,6 +104,19 @@ config/company_financial_overrides.csv
 ```
 
 Override rows include `ticker`, `field`, `value`, `currency`, `unit`, `source_url`, `source_name`, `confidence`, `notes`, and verification dates. High-confidence or `force` notes can override populated automated values; otherwise overrides only fill missing fields.
+
+Refresh RNS-derived technical evidence manually with:
+
+```powershell
+python -m scripts.refresh_rns_technical_evidence --input config/ticker_universe.csv --output-csv data/rns_technical_evidence.csv --output-json storage/audit/rns_technical_evidence_audit.json
+```
+
+Dashboard startup does not scrape RNS pages by default. Enable live RNS technical refresh only for deliberate update sessions:
+
+```powershell
+$env:ENABLE_RNS_TECHNICAL_REFRESH=true
+$env:RNS_CACHE_TTL_HOURS=24
+```
 
 Refresh the canonical market snapshot manually with:
 

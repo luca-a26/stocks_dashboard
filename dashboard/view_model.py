@@ -33,6 +33,12 @@ TABLE_COLUMNS = [
     "Shares Outstanding",
     "Volume",
     "52W Range",
+    "Mineralogy",
+    "Recovery",
+    "Study Stage",
+    "Resource Confidence",
+    "Impurity Profile",
+    "Technical Source",
     "Commodity",
     "Stage Gates",
     "Missing Data",
@@ -366,6 +372,22 @@ def _format_list(value: Any) -> str:
     return str(value) or "None"
 
 
+def _format_technical_text(value: Any, default: str = "Not found in RNS yet") -> str:
+    if _is_missing_value(value):
+        return default
+    if isinstance(value, list):
+        return "; ".join(str(item) for item in value if str(item)) or default
+    return str(value)
+
+
+def _format_recovery(metrics: dict[str, Any]) -> str:
+    if not _is_missing_value(metrics.get("recovery_pct")):
+        return _format_percent(metrics.get("recovery_pct"))
+    if metrics.get("metallurgical_testwork") is True:
+        return "Testwork found; recovery not extracted"
+    return "Not found in RNS yet"
+
+
 def _alias(stock: dict[str, Any], company: str) -> str:
     aliases = []
     former_name = stock.get("former_name")
@@ -429,6 +451,14 @@ def build_dashboard_rows(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "52W Range": _format_range(
                     metrics.get("fifty_two_week_low"),
                     metrics.get("fifty_two_week_high"),
+                ),
+                "Mineralogy": _format_technical_text(metrics.get("mineralogy")),
+                "Recovery": _format_recovery(metrics),
+                "Study Stage": _format_technical_text(metrics.get("study_stage")),
+                "Resource Confidence": _format_technical_text(metrics.get("resource_category")),
+                "Impurity Profile": _format_technical_text(metrics.get("impurity_profile")),
+                "Technical Source": _format_technical_text(
+                    metrics.get("rns_latest_title") or metrics.get("technical_data_source")
                 ),
                 "Stage Gates": _format_list(stock.get("applied_stage_gates")),
                 "Missing Data": _format_list(stock.get("missing_data_fields")),

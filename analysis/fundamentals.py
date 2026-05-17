@@ -6,6 +6,7 @@ from data.financial_pipeline import build_company_identity, normalise_company_fi
 from data.london_south_east import fetch_share_price_snapshot
 from data.lse import fetch_company_snapshot
 from data.market_snapshot import get_market_snapshot_for_ticker, normalize_lse_ticker
+from data.rns import TECHNICAL_EVIDENCE_FIELDS, build_rns_technical_metrics
 from data.utils import get_logger
 from data.yahoo import fetch_yahoo_london_fallback
 
@@ -52,6 +53,56 @@ def _coverage_ratio(metrics: dict[str, Any]) -> float:
         metrics.get("shares_outstanding_lfy") is not None,
     )
     return round(sum(required) / len(required), 3)
+
+
+def enrich_with_rns_technical_metrics(
+    ticker_code: str,
+    metrics: dict[str, Any],
+    *,
+    company_name: str = "",
+    force_refresh: bool = False,
+) -> dict[str, Any]:
+    """Merge RNS-sourced technical asset evidence into the metrics payload.
+
+    Market/fundamental providers rarely expose mineralogy, recovery, impurity,
+    capex/opex, or resource confidence. RNS evidence is therefore treated as a
+    separate technical source and merged into the same metrics dict consumed by
+    the rare-earth scoring model.
+    """
+    rns_metrics = build_rns_technical_metrics(
+        ticker_code,
+        company_name,
+        force_refresh=force_refresh,
+    )
+    if not rns_metrics:
+        return metrics
+
+    merged = dict(metrics)
+    for field in TECHNICAL_EVIDENCE_FIELDS:
+        if rns_metrics.get(field) not in (None, ""):
+            merged[field] = rns_metrics[field]
+
+    for field in (
+        "technical_evidence_sources",
+        "technical_data_source",
+        "rns_parser_version",
+        "rns_latest_date",
+        "rns_latest_title",
+        "rns_technical_notes",
+        "rns_evidence_count",
+    ):
+        if rns_metrics.get(field) not in (None, "", []):
+            merged[field] = rns_metrics[field]
+
+    notes = list(merged.get("data_fallbacks") or [])
+    notes.extend(rns_metrics.get("data_fallbacks") or [])
+    if notes:
+        merged["data_fallbacks"] = sorted(dict.fromkeys(str(note) for note in notes if note))
+
+    source = str(merged.get("source") or "Market/fundamental data")
+    if "RNS technical evidence" not in source:
+        merged["source"] = f"{source} + RNS technical evidence"
+    return merged
 
 
 def _merge_fallback_metrics(metrics: dict[str, Any], fallback: dict[str, Any]) -> dict[str, Any]:
@@ -126,13 +177,26 @@ def fetch_fundamentals(ticker_code: str, force_refresh: bool = False) -> dict[st
         identity = build_company_identity({"ticker": ticker_code, "company_name": snapshot_row.get("company_name")}, snapshot_row)
         snapshot_sources["market_snapshot"] = snapshot_row
         metrics = normalise_company_financials(identity, snapshot_sources)
+        metrics = enrich_with_rns_technical_metrics(
+            ticker_code,
+            metrics,
+            company_name=str(snapshot_row.get("company_name") or ""),
+            force_refresh=force_refresh,
+        )
         if metrics.get("display_safe_coverage_ratio", 0) >= 0.95:
             return metrics
 
     lse_metrics = fetch_company_snapshot(ticker_code, force_refresh=force_refresh)
+    company_name = str(lse_metrics.get("issuer_name") or (snapshot_row or {}).get("company_name") or "")
     identity = build_company_identity({"ticker": ticker_code}, lse_metrics)
     sources: dict[str, dict[str, Any]] = {**snapshot_sources, "lse": lse_metrics}
     metrics = normalise_company_financials(identity, sources)
+    metrics = enrich_with_rns_technical_metrics(
+        ticker_code,
+        metrics,
+        company_name=company_name,
+        force_refresh=force_refresh,
+    )
     if metrics.get("display_safe_coverage_ratio", 0) >= 0.95:
         return metrics
 
@@ -141,6 +205,12 @@ def fetch_fundamentals(ticker_code: str, force_refresh: bool = False) -> dict[st
         if lse_co_uk:
             sources["london_south_east_share"] = lse_co_uk
             metrics = normalise_company_financials(identity, sources)
+            metrics = enrich_with_rns_technical_metrics(
+                ticker_code,
+                metrics,
+                company_name=company_name,
+                force_refresh=force_refresh,
+            )
     except Exception as exc:
         get_logger(__name__).warning("London South East share page fallback unavailable for %s: %s", ticker_code, exc)
 
@@ -153,7 +223,13 @@ def fetch_fundamentals(ticker_code: str, force_refresh: bool = False) -> dict[st
             sources["yahoo"] = fallback
     except Exception as exc:
         get_logger(__name__).warning("Yahoo Finance fallback unavailable for %s: %s", ticker_code, exc)
-    return normalise_company_financials(identity, sources)
+    metrics = normalise_company_financials(identity, sources)
+    return enrich_with_rns_technical_metrics(
+        ticker_code,
+        metrics,
+        company_name=company_name,
+        force_refresh=force_refresh,
+    )
 
 
 def score_fundamentals(metrics: dict[str, Any]) -> dict[str, Any]:

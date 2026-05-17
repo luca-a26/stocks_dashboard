@@ -65,6 +65,12 @@ COMPARISON_WIDE_COLUMNS = [
     "Company",
     "Alias",
     "Peer Group",
+    "Mineralogy",
+    "Recovery",
+    "Study Stage",
+    "Resource Confidence",
+    "Impurity Profile",
+    "Technical Source",
     "Commodity",
     "Role",
     "Stage Gates",
@@ -81,6 +87,9 @@ SEARCH_FIELDS = [
     "Alias",
     "Exchange",
     "Country",
+    "Mineralogy",
+    "Study Stage",
+    "Resource Confidence",
     "Commodity",
     "Role",
     "Segment",
@@ -295,6 +304,13 @@ def _build_comparison_payload(
             "shares_display": record.get("Shares Outstanding"),
             "volume_display": record.get("Volume"),
             "range_display": record.get("52W Range"),
+            "mineralogy": record.get("Mineralogy") or (metrics.get("mineralogy") if isinstance(metrics, dict) else None),
+            "recovery": record.get("Recovery"),
+            "study_stage": record.get("Study Stage") or (metrics.get("study_stage") if isinstance(metrics, dict) else None),
+            "resource_confidence": record.get("Resource Confidence") or (metrics.get("resource_category") if isinstance(metrics, dict) else None),
+            "impurity_profile": record.get("Impurity Profile") or (metrics.get("impurity_profile") if isinstance(metrics, dict) else None),
+            "technical_source": record.get("Technical Source") or (metrics.get("technical_data_source") if isinstance(metrics, dict) else None),
+            "technical_evidence_sources": metrics.get("technical_evidence_sources") if isinstance(metrics, dict) else [],
             "missing_data_fields": record.get("Missing Data") or raw.get("missing_data_fields"),
             "stage_gates": record.get("Stage Gates") or raw.get("applied_stage_gates"),
             "drivers": record.get("Drivers") or raw.get("reason_codes"),
@@ -719,6 +735,25 @@ def _overview_list(title: str, value: Any, *, empty: str = "None recorded") -> h
     )
 
 
+def _technical_evidence_list(company: dict[str, Any]) -> list[str]:
+    sources = company.get("technical_evidence_sources") or []
+    if isinstance(sources, dict):
+        sources = [sources]
+    items: list[str] = []
+    for source in sources[:4]:
+        if not isinstance(source, dict):
+            items.append(_safe_text(source))
+            continue
+        title = _display_value(source.get("title"), "Untitled RNS")
+        date = _display_value(source.get("date"), "date not parsed")
+        fields = source.get("fields") or []
+        field_text = ", ".join(str(field) for field in fields if field) or "technical fields"
+        items.append(f"{date}: {title} ({field_text})")
+    if not items and company.get("technical_source"):
+        items.append(str(company["technical_source"]))
+    return items
+
+
 def _normalise_url(url: Any) -> str:
     text = _safe_text(url).strip()
     if text.lower().startswith(("http://", "https://")):
@@ -755,6 +790,15 @@ def _resource_links(company: dict[str, Any]) -> list[dict[str, str]]:
     source_url = _normalise_url(company.get("source_url"))
     if source_url:
         links.append({"label": "Primary Source", "href": source_url})
+
+    rns_sources = company.get("technical_evidence_sources") or []
+    if isinstance(rns_sources, dict):
+        rns_sources = [rns_sources]
+    for index, source in enumerate(rns_sources[:2], start=1):
+        if isinstance(source, dict):
+            url = _normalise_url(source.get("url"))
+            if url:
+                links.append({"label": f"RNS Technical {index}", "href": url})
 
     deduped: list[dict[str, str]] = []
     seen: set[str] = set()
@@ -948,6 +992,11 @@ def _company_overview_main(
                 _overview_kpi("Shares", company.get("shares_display"), "shares outstanding"),
                 _overview_kpi("Volume", company.get("volume_display"), "latest volume"),
                 _overview_kpi("52W Range", company.get("range_display"), "low to high"),
+                _overview_kpi("Mineralogy", company.get("mineralogy"), "RNS technical evidence"),
+                _overview_kpi("Recovery", company.get("recovery"), "metallurgical extraction"),
+                _overview_kpi("Study Stage", company.get("study_stage"), "latest technical stage"),
+                _overview_kpi("Resource", company.get("resource_confidence"), "confidence category"),
+                _overview_kpi("Impurity", company.get("impurity_profile"), "radioactivity / deleterious"),
             ],
             className="overview-kpi-grid",
         ),
@@ -969,6 +1018,7 @@ def _company_overview_main(
                         _overview_list("Positive Drivers", company.get("positive_drivers") or company.get("drivers")),
                         _overview_list("Negative Drivers / Missing Data", company.get("negative_drivers") or company.get("missing_data_fields")),
                         _overview_list("Stage Gates", company.get("stage_gates")),
+                        _overview_list("RNS Technical Evidence", _technical_evidence_list(company)),
                         _overview_list("Data Notes", company.get("data_notes"), empty="No fallback notes recorded"),
                     ],
                     className="overview-detail-grid",

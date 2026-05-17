@@ -8,6 +8,8 @@ storage/cache/london_south_east/industrial_metals_universe.csv
 config/ticker_universe.csv + config/tickers.yaml + config/ree_pipeline.yaml
         +
 data/company_market_snapshot.csv or data/company_market_snapshot.json
+        +
+config/rns_technical_evidence.csv + optional data/rns_technical_evidence.csv
         |
 data.universe.load_ticker_universe()
         |
@@ -30,6 +32,8 @@ analysis.composite.load_detailed_stock()
 data.market_snapshot.load_market_snapshot()
         |
 data.lse.fetch_company_snapshot()
+        |
+data.rns.build_rns_technical_metrics()
         |
 analysis.rare_earth_scoring
         |
@@ -67,6 +71,27 @@ Dashboard runtime loads the snapshot before live market fallbacks. Live startup
 refreshes are controlled by `ENABLE_LIVE_MARKET_REFRESH` and default to off so
 page loads remain fast and reproducible.
 
+Technical asset evidence is a separate RNS-backed layer:
+
+```text
+.github/workflows/rns-technical-evidence.yml
+        |
+python -m scripts.refresh_rns_technical_evidence
+        |
+London Stock Exchange RNS article pages
+        |
+data/rns_technical_evidence.csv
+        |
+config/rns_technical_evidence.csv manual analyst overlays
+        |
+data.rns.build_rns_technical_metrics()
+```
+
+This layer feeds mineralogy, metallurgical testwork, recovery, impurity,
+resource confidence, study stage, capex/opex, and processing depth into the
+existing rare-earth score. Live RNS refreshes are controlled by
+`ENABLE_RNS_TECHNICAL_REFRESH` and default to off during dashboard startup.
+
 Rare-earth discovery data follows a separate manual-enrichment path:
 
 ```text
@@ -95,5 +120,6 @@ Dash tabs, tables, and charts
 - Prefer explicit configuration files over hardcoded company lists.
 - Keep ticker-universe metadata separate from expensive fundamentals.
 - Use the committed market snapshot as the stable first source for market cap and shares before runtime scraping.
+- Use RNS-derived technical evidence as the primary source for deposit-quality fields that market-data feeds do not carry.
 - Keep third-party research credentials out of the repository; import derived rows manually or through a compliant export.
 - Use the London South East sector cache as a generated universe input, not as a committed source file.

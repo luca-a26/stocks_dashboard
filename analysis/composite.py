@@ -13,6 +13,7 @@ from data.market_snapshot import (
     load_market_snapshot,
     normalize_lse_ticker,
 )
+from data.rns import build_rns_technical_metrics
 from data.universe import (
     DEFAULT_UNIVERSE_LIMIT,
     get_universe_record,
@@ -118,9 +119,22 @@ def _metadata_stock(
     record: dict[str, Any],
     market_snapshot: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    scored = score_metadata_only(record)
-    score = float(scored["composite_score"])
     market_metrics = _market_metrics_from_metadata(record, market_snapshot)
+    rns_metrics = build_rns_technical_metrics(
+        str(record.get("ticker") or ""),
+        str(record.get("company_name") or ""),
+    )
+    if rns_metrics:
+        market_metrics = _merge_rns_metrics(market_metrics, rns_metrics)
+        scored = score_company(record, market_metrics, score_status="partial")
+        score = float(scored["composite_score"])
+        full_score = score
+        score_status = scored["score_status"]
+    else:
+        scored = score_metadata_only(record)
+        score = float(scored["composite_score"])
+        full_score = None
+        score_status = "metadata_only"
     return {
         "ticker": record.get("ticker", ""),
         "name": record.get("company_name") or record.get("ticker", ""),
@@ -137,8 +151,8 @@ def _metadata_stock(
         "former_ticker": record.get("former_ticker") or None,
         "requested_name": record.get("requested_name") or None,
         "preliminary_score": score,
-        "full_score": None,
-        "score_status": "metadata_only",
+        "full_score": full_score,
+        "score_status": score_status,
         "composite_score": score,
         "technical_asset_score": scored["technical_asset_score"],
         "commercial_financial_score": scored["commercial_financial_score"],
@@ -166,6 +180,21 @@ def _metadata_stock(
             "metrics": market_metrics,
         },
     }
+
+
+def _merge_rns_metrics(metrics: dict[str, Any], rns_metrics: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(metrics)
+    for field, value in rns_metrics.items():
+        if field == "data_fallbacks":
+            notes = list(merged.get("data_fallbacks") or [])
+            notes.extend(value or [])
+            merged["data_fallbacks"] = sorted(dict.fromkeys(str(note) for note in notes if note))
+        elif value not in (None, "", []):
+            merged[field] = value
+    source = str(merged.get("source") or "Ticker universe metadata")
+    if "RNS technical evidence" not in source:
+        merged["source"] = f"{source} + RNS technical evidence"
+    return merged
 
 
 def _audit_snapshot_ingestion(
@@ -347,6 +376,41 @@ def load_default_ranked_stocks(limit: int | None = DEFAULT_UNIVERSE_LIMIT) -> tu
                 identity = build_company_identity(metadata or {"ticker": ticker}, metrics)
                 stock.setdefault("fundamental", {}).setdefault("metrics", {})
                 normalised_metrics = normalise_company_financials(identity, sources)
+                rns_metrics = build_rns_technical_metrics(
+                    ticker,
+                    str(metadata.get("company_name") or stock.get("name") or ""),
+                )
+                if rns_metrics:
+                    normalised_metrics = _merge_rns_metrics(normalised_metrics, rns_metrics)
+                    requested_status = str(stock.get("score_status") or "partial")
+                    if requested_status not in {"full", "partial", "stale"}:
+                        requested_status = "partial"
+                    hybrid = score_company(metadata or stock, normalised_metrics, score_status=requested_status)
+                    stock.update(
+                        {
+                            "full_score": float(hybrid["composite_score"]),
+                            "score_status": hybrid["score_status"],
+                            "composite_score": float(hybrid["composite_score"]),
+                            "technical_asset_score": hybrid["technical_asset_score"],
+                            "commercial_financial_score": hybrid["commercial_financial_score"],
+                            "strategic_supply_chain_score": hybrid["strategic_supply_chain_score"],
+                            "benchmark_score": hybrid.get("benchmark_score"),
+                            "benchmark_breakdown": hybrid.get("benchmark_breakdown"),
+                            "scoring_confidence": hybrid["scoring_confidence"],
+                            "data_quality_score": hybrid["data_quality_score"],
+                            "data_completeness_score": hybrid.get("data_completeness_score"),
+                            "confidence_level": hybrid.get("confidence_level"),
+                            "suggested_peer_group": hybrid.get("suggested_peer_group"),
+                            "rating_label": hybrid["rating_label"],
+                            "score_breakdown": hybrid["score_breakdown"],
+                            "missing_data_fields": hybrid["missing_data_fields"],
+                            "applied_stage_gates": hybrid["applied_stage_gates"],
+                            "reason_codes": hybrid["reason_codes"],
+                            "explanation_bullets": hybrid["explanation_bullets"],
+                            "top_positive_drivers": hybrid.get("top_positive_drivers"),
+                            "top_negative_drivers": hybrid.get("top_negative_drivers"),
+                        }
+                    )
                 if stock.get("score_cache_state") == "stale":
                     notes = list(normalised_metrics.get("data_fallbacks") or [])
                     notes.append("Score cache is expired; use Load financials to refresh detailed score")

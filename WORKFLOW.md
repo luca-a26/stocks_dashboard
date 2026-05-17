@@ -24,6 +24,7 @@ Before merge:
 3. Runtime artifacts must remain ignored by Git.
 4. `CHANGELOG.md` must be updated for user-visible behavior changes.
 5. Market snapshot changes should include a coverage audit when the refresh workflow or canonical data shape changes.
+6. RNS technical-evidence changes should include source URLs, extraction notes, and parser tests when mineralogy, recovery, impurity, resource, or study-stage fields are affected.
 
 ## Release Process
 
@@ -35,6 +36,7 @@ Before merge:
 
 - Do not commit `logs/`, `storage/cache/`, generated snapshots, or exploratory notebooks.
 - `data/company_market_snapshot.csv` and `data/company_market_snapshot.json` are intentional committed data resources refreshed by scheduled automation.
+- `data/rns_technical_evidence.csv`, when present, is an intentional generated technical-evidence resource refreshed by scheduled automation and backed by source RNS URLs.
 - `storage/audit/` holds generated coverage-audit artifacts and should stay ignored.
 - Keep small deterministic fixtures in `tests/fixtures/` if tests need sample data.
 - Document new data providers in `docs/ARCHITECTURE.md`.
