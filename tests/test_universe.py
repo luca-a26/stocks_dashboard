@@ -60,7 +60,8 @@ def test_default_ranked_stocks_can_return_full_comparison_universe(monkeypatch):
     assert "metadata" in source
 
 
-def test_metadata_stock_keeps_sector_market_snapshot():
+def test_metadata_stock_keeps_sector_market_snapshot(monkeypatch):
+    monkeypatch.setattr(composite, "build_rns_technical_metrics", lambda ticker, company_name: {})
     stock = composite._metadata_stock(
         {
             "ticker": "RIO",
@@ -74,6 +75,33 @@ def test_metadata_stock_keeps_sector_market_snapshot():
 
     metrics = stock["fundamental"]["metrics"]
     assert stock["score_status"] == "metadata_only"
+    assert metrics["last_price"] == 7927
+    assert metrics["volume"] == 2_827_539
+
+
+def test_metadata_stock_with_rns_evidence_becomes_partial(monkeypatch):
+    monkeypatch.setattr(
+        composite,
+        "build_rns_technical_metrics",
+        lambda ticker, company_name: {
+            "metallurgical_testwork": True,
+            "technical_evidence_status": "structured_fields_extracted",
+            "data_fallbacks": ["RNS technical evidence applied (1 announcement)"],
+        },
+    )
+    stock = composite._metadata_stock(
+        {
+            "ticker": "RIO",
+            "company_name": "Rio Tinto",
+            "exchange": "LSE",
+            "commodity_tags": ["industrial metals"],
+            "last_price": "7927",
+            "volume": "2827539",
+        }
+    )
+
+    metrics = stock["fundamental"]["metrics"]
+    assert stock["score_status"] == "partial"
     assert metrics["last_price"] == 7927
     assert metrics["volume"] == 2_827_539
 

@@ -13,6 +13,7 @@ from data.rns import (
     build_rns_technical_metrics_from_announcements,
     extract_technical_evidence_from_text,
     fetch_recent_lse_rns_announcements,
+    is_relevant_technical_source,
     write_rns_technical_evidence_csv,
     write_rns_technical_evidence_json,
 )
@@ -42,19 +43,28 @@ def _load_input_companies(path: Path) -> list[dict[str, str]]:
 
 
 def _announcement_to_row(ticker: str, company: str, announcement: Any) -> dict[str, Any] | None:
-    extracted = extract_technical_evidence_from_text(announcement.text, announcement.title)
-    if not extracted:
+    if not is_relevant_technical_source(announcement.title, announcement.text):
         return None
+    extracted = extract_technical_evidence_from_text(announcement.text, announcement.title)
     reasons = extracted.pop("reason_codes", [])
+    field_count = sum(1 for field in TECHNICAL_EVIDENCE_FIELDS if extracted.get(field) not in (None, ""))
     row = {
         "ticker": ticker,
         "company": company,
         "announcement_date": announcement.released or "",
         "announcement_title": announcement.title,
         "source_url": announcement.url,
-        "source_name": "London Stock Exchange RNS",
+        "technical_evidence_status": (
+            "structured_fields_extracted" if field_count else "rns_or_document_found_needs_review"
+        ),
+        "technical_field_count": field_count,
+        "source_name": "London South East RNS mirror"
+        if "lse.co.uk" in str(announcement.url).lower()
+        else "London Stock Exchange RNS",
         "confidence": "Medium",
-        "notes": "; ".join(reasons),
+        "notes": "; ".join(reasons)
+        if reasons
+        else "Technical/project RNS found; structured fields require analyst review",
         "last_verified": datetime.now(timezone.utc).date().isoformat(),
     }
     for field in TECHNICAL_EVIDENCE_FIELDS:
@@ -80,7 +90,10 @@ def refresh_rns_technical_evidence(
         "input": str(input_path),
         "companies_checked": len(companies),
         "rows_with_technical_evidence": 0,
+        "rows_requiring_review": 0,
         "tickers_with_technical_evidence": [],
+        "tickers_with_rns_candidates": [],
+        "tickers_without_rns_candidates": [],
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -97,16 +110,31 @@ def refresh_rns_technical_evidence(
             get_logger(__name__).warning("RNS refresh failed for %s: %s", ticker, exc)
             continue
 
+        company_rows: list[dict[str, Any]] = []
         # Build once as a validation pass, then write the row-level evidence for auditability.
         merged = build_rns_technical_metrics_from_announcements(announcements)
         if merged:
-            audit["tickers_with_technical_evidence"].append(ticker)
+            audit["tickers_with_rns_candidates"].append(ticker)
+            if merged.get("technical_field_count", 0) > 0:
+                audit["tickers_with_technical_evidence"].append(ticker)
         for announcement in announcements:
             row = _announcement_to_row(ticker, company["company"], announcement)
             if row:
-                rows.append(row)
+                company_rows.append(row)
+        if not company_rows:
+            audit["tickers_without_rns_candidates"].append(ticker)
+        rows.extend(company_rows)
 
     audit["rows_with_technical_evidence"] = len(rows)
+    audit["rows_requiring_review"] = sum(
+        1 for row in rows if row.get("technical_evidence_status") == "rns_or_document_found_needs_review"
+    )
+    audit["technical_field_coverage"] = (
+        len(audit["tickers_with_technical_evidence"]) / len(companies) if companies else 0
+    )
+    audit["technical_source_coverage"] = (
+        len(audit["tickers_with_rns_candidates"]) / len(companies) if companies else 0
+    )
     write_rns_technical_evidence_csv(rows, output_csv)
     write_rns_technical_evidence_json(audit, output_json)
     return audit
@@ -114,7 +142,7 @@ def refresh_rns_technical_evidence(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Refresh RNS-derived technical evidence for scoring.")
-    parser.add_argument("--input", default="config/ticker_universe.csv")
+    parser.add_argument("--input", default="data/company_market_snapshot.csv")
     parser.add_argument("--output-csv", default="data/rns_technical_evidence.csv")
     parser.add_argument("--output-json", default="storage/audit/rns_technical_evidence_audit.json")
     parser.add_argument("--limit-companies", type=int, default=None)
@@ -133,7 +161,9 @@ def main() -> None:
     print(
         "RNS technical evidence refresh: "
         f"{audit['rows_with_technical_evidence']} rows across "
-        f"{len(audit['tickers_with_technical_evidence'])} tickers"
+        f"{len(audit['tickers_with_technical_evidence'])} tickers; "
+        f"source coverage {audit['technical_source_coverage']:.1%}; "
+        f"structured-field coverage {audit['technical_field_coverage']:.1%}"
     )
 
 

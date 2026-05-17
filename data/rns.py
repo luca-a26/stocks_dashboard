@@ -22,8 +22,9 @@ RNS_TECHNICAL_EVIDENCE_SNAPSHOT_PATH = PROJECT_ROOT / "data" / "rns_technical_ev
 RNS_CACHE_DIR = ensure_storage_path("storage/cache/rns")
 RNS_CACHE_TTL = timedelta(hours=float(os.getenv("RNS_CACHE_TTL_HOURS", "24")))
 RNS_REQUEST_TIMEOUT = 20
-RNS_PARSER_VERSION = "rns-technical-v1"
+RNS_PARSER_VERSION = "rns-technical-v2"
 LSE_WEBSITE_BASE = "https://www.londonstockexchange.com"
+LONDON_SOUTH_EAST_BASE = "https://www.lse.co.uk"
 
 TECHNICAL_EVIDENCE_FIELDS = [
     "mineralogy",
@@ -51,6 +52,8 @@ CSV_FIELDS = [
     "announcement_date",
     "announcement_title",
     "source_url",
+    "technical_evidence_status",
+    "technical_field_count",
     *TECHNICAL_EVIDENCE_FIELDS,
     "source_name",
     "confidence",
@@ -84,6 +87,68 @@ TECHNICAL_HEADLINE_TERMS = (
     "ndpr",
     "dytb",
     "treo",
+)
+
+TECHNICAL_SOURCE_TERMS = (
+    *TECHNICAL_HEADLINE_TERMS,
+    "assay",
+    "drill",
+    "drilling",
+    "jorc",
+    "ni 43-101",
+    "mre",
+    "mineral resource estimate",
+    "resource estimate",
+    "ore reserve",
+    "project update",
+    "operations update",
+    "production update",
+    "pilot plant",
+    "plant",
+    "economic assessment",
+    "investor presentation",
+    "presentation",
+    "technical report",
+    "annual report",
+    "interim results",
+    "preliminary results",
+    "final results",
+    "exploration update",
+    "development update",
+    "study",
+    "bulk sample",
+    "sampling",
+    "grade",
+    "tonnage",
+    "concentrate",
+    "deposit",
+    "mine",
+    "mining",
+    "ore",
+)
+
+NON_TECHNICAL_RNS_TERMS = (
+    "director dealing",
+    "pdmr",
+    "holding(s)",
+    "holdings",
+    "total voting rights",
+    "issue of equity",
+    "block listing",
+    "agm",
+    "general meeting",
+    "notice of meeting",
+    "shareholding",
+    "warrant exercise",
+    "grant of options",
+)
+
+NON_TECHNICAL_FINANCIAL_RESERVE_TERMS = (
+    "share premium reserve",
+    "unrestricted equity",
+    "reserve for invested",
+    "reduction of the share premium reserve",
+    "distribution of assets from the reserve",
 )
 
 
@@ -142,11 +207,27 @@ def _get_text(url: str, cache_path: Path, *, force_refresh: bool = False) -> str
     return text
 
 
-def _slugify_company(value: str) -> str:
+def _slugify_company(value: str, *, strip_legal_suffixes: bool = False) -> str:
     text = str(value or "").lower()
-    text = re.sub(r"\b(plc|ltd|limited|inc|corp|corporation|resources?|metals?|mining|company)\b", "", text)
+    if strip_legal_suffixes:
+        text = re.sub(r"\b(plc|ltd|limited|inc|corp|corporation|company)\b", "", text)
     text = re.sub(r"[^a-z0-9]+", "-", text).strip("-")
     return text or "company"
+
+
+def _slug_candidates(company_name: str, ticker: str) -> list[str]:
+    candidates = [
+        _slugify_company(company_name),
+        _slugify_company(company_name, strip_legal_suffixes=True),
+        normalize_lse_ticker(ticker).lower(),
+    ]
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        if candidate and candidate not in seen:
+            seen.add(candidate)
+            deduped.append(candidate)
+    return deduped
 
 
 def _present(value: Any) -> bool:
@@ -207,6 +288,8 @@ def _normalise_row(row: dict[str, Any]) -> dict[str, Any]:
         "announcement_date": str(normalised.get("announcement_date") or "").strip(),
         "announcement_title": str(normalised.get("announcement_title") or "").strip(),
         "source_url": str(normalised.get("source_url") or "").strip(),
+        "technical_evidence_status": str(normalised.get("technical_evidence_status") or "").strip(),
+        "technical_field_count": _to_float(normalised.get("technical_field_count")),
         "source_name": str(normalised.get("source_name") or "RNS technical evidence").strip(),
         "confidence": str(normalised.get("confidence") or "").strip(),
         "notes": str(normalised.get("notes") or "").strip(),
@@ -261,6 +344,7 @@ def _merge_evidence_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "rns_parser_version": RNS_PARSER_VERSION,
     }
     notes: list[str] = []
+    structured_field_count = 0
     for row in rows:
         populated_fields: list[str] = []
         for field in TECHNICAL_EVIDENCE_FIELDS:
@@ -268,6 +352,7 @@ def _merge_evidence_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
             if _present(value) and merged.get(field) in (None, "", []):
                 merged[field] = value
                 populated_fields.append(field)
+        structured_field_count += len(populated_fields)
         if row.get("notes"):
             notes.append(str(row["notes"]))
         if row.get("source_url") or row.get("announcement_title"):
@@ -279,13 +364,23 @@ def _merge_evidence_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
                     "source": row.get("source_name") or "RNS",
                     "fields": populated_fields,
                     "confidence": row.get("confidence"),
+                    "status": row.get("technical_evidence_status"),
                 }
             )
 
     if merged["technical_evidence_sources"]:
-        latest = merged["technical_evidence_sources"][0]
-        merged["rns_latest_date"] = latest.get("date")
-        merged["rns_latest_title"] = latest.get("title")
+        representative = next(
+            (source for source in merged["technical_evidence_sources"] if source.get("fields")),
+            merged["technical_evidence_sources"][0],
+        )
+        merged["rns_latest_date"] = representative.get("date")
+        merged["rns_latest_title"] = representative.get("title")
+    merged["technical_evidence_status"] = (
+        "structured_fields_extracted"
+        if structured_field_count > 0
+        else "rns_or_document_found_needs_review"
+    )
+    merged["technical_field_count"] = structured_field_count
     if notes:
         merged["rns_technical_notes"] = "; ".join(dict.fromkeys(notes))
     merged["rns_evidence_count"] = len(rows)
@@ -335,6 +430,158 @@ def parse_lse_news_article(article_html: str, url: str, ticker: str) -> RnsAnnou
     return RnsAnnouncement(ticker=normalize_lse_ticker(ticker), title=title, url=url, released=released, text=text)
 
 
+def _extract_lse_news_id(url: str) -> str | None:
+    match = re.search(r"/news-article/[^/]+/[^/]+/(\d+)", str(url or ""), flags=re.IGNORECASE)
+    return match.group(1) if match else None
+
+
+def parse_lse_news_article_payload(payload: dict[str, Any], url: str, ticker: str) -> RnsAnnouncement | None:
+    """Parse the official LSE news-article JSON payload.
+
+    The London Stock Exchange article page is client-rendered, but the public
+    page API exposes the RNS title, timestamp, company code, and HTML body. This
+    parser keeps that extraction isolated so tests can cover it without network
+    calls.
+    """
+
+    for component in payload.get("components") or []:
+        if component.get("type") != "news-article-content":
+            continue
+        for item in component.get("content") or []:
+            if item.get("name") != "newsarticle":
+                continue
+            article = item.get("value") or {}
+            body_html = str(article.get("body") or "")
+            soup = BeautifulSoup(body_html, "html.parser")
+            for tag in soup(["script", "style", "noscript"]):
+                tag.decompose()
+            text = html.unescape(" ".join(soup.get_text(" ", strip=True).split()))
+            return RnsAnnouncement(
+                ticker=normalize_lse_ticker(article.get("companycode") or ticker),
+                title=str(article.get("title") or article.get("headlinename") or "").strip(),
+                url=url,
+                released=str(article.get("datetime") or "").strip() or None,
+                text=text,
+            )
+    return None
+
+
+def fetch_lse_news_article_from_url(
+    url: str,
+    ticker: str,
+    *,
+    force_refresh: bool = False,
+) -> RnsAnnouncement | None:
+    news_id = _extract_lse_news_id(url)
+    if not news_id:
+        return None
+    ticker_key = normalize_lse_ticker(ticker)
+    cache_path = RNS_CACHE_DIR / ticker_key / f"official_article_{news_id}.json"
+    if not force_refresh and _cache_is_fresh(cache_path):
+        payload = json.loads(cache_path.read_text(encoding="utf-8"))
+    else:
+        api_url = f"https://api.londonstockexchange.com/api/v1/pages?path=news-article&parameters=newsId%253D{news_id}"
+        response = _session().get(api_url, timeout=RNS_REQUEST_TIMEOUT, headers={"Accept": "application/json"})
+        response.raise_for_status()
+        payload = response.json()
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(json.dumps(payload), encoding="utf-8")
+    return parse_lse_news_article_payload(payload, url, ticker_key)
+
+
+def parse_london_south_east_rns_links(index_html: str, ticker: str) -> list[dict[str, str]]:
+    ticker_key = normalize_lse_ticker(ticker)
+    soup = BeautifulSoup(index_html or "", "html.parser")
+    links: list[dict[str, str]] = []
+    seen: set[str] = set()
+    pattern = f"/rns/{ticker_key}/".lower()
+    for anchor in soup.find_all("a", href=True):
+        href = str(anchor["href"])
+        if pattern not in href.lower() or not href.lower().endswith(".html"):
+            continue
+        url = href if href.startswith("http") else f"{LONDON_SOUTH_EAST_BASE}{href}"
+        if url in seen:
+            continue
+        seen.add(url)
+        title = " ".join(anchor.get_text(" ", strip=True).split())
+        released = ""
+        row = anchor.find_parent("tr")
+        if row:
+            cells = row.find_all("td")
+            if cells:
+                date_part = " ".join(cells[0].get_text(" ", strip=True).split())
+                time_part = " ".join(cells[1].get_text(" ", strip=True).split()) if len(cells) > 1 else ""
+                released = " ".join(part for part in (date_part, time_part) if part)
+        links.append({"url": url, "title": title, "released": released})
+    return links
+
+
+def parse_london_south_east_rns_article(
+    article_html: str,
+    url: str,
+    ticker: str,
+    *,
+    title: str = "",
+    released: str | None = None,
+) -> RnsAnnouncement:
+    soup = BeautifulSoup(article_html or "", "html.parser")
+    article_node = soup.select_one(".rns__article-content") or soup
+    for tag in article_node(["script", "style", "noscript"]):
+        tag.decompose()
+    date_node = article_node.select_one(".rns__date")
+    article_released = released or (date_node.get_text(" ", strip=True) if date_node else None)
+    text = html.unescape(" ".join(article_node.get_text(" ", strip=True).split()))
+    return RnsAnnouncement(
+        ticker=normalize_lse_ticker(ticker),
+        title=title.strip(),
+        url=url,
+        released=article_released,
+        text=text,
+    )
+
+
+def fetch_london_south_east_rns_announcements(
+    ticker: str,
+    *,
+    limit: int = 20,
+    force_refresh: bool = False,
+) -> list[RnsAnnouncement]:
+    ticker_key = normalize_lse_ticker(ticker)
+    if not ticker_key:
+        return []
+    index_url = f"{LONDON_SOUTH_EAST_BASE}/rns/{ticker_key}/"
+    index_cache = RNS_CACHE_DIR / ticker_key / "london_south_east_index.html"
+    try:
+        index_html = _get_text(index_url, index_cache, force_refresh=force_refresh)
+    except Exception as exc:
+        get_logger(__name__).debug("London South East RNS index unavailable for %s: %s", ticker_key, exc)
+        return []
+
+    links = [
+        link
+        for link in parse_london_south_east_rns_links(index_html, ticker_key)
+        if is_relevant_technical_source(link.get("title", ""))
+    ][:limit]
+    announcements: list[RnsAnnouncement] = []
+    for link in links:
+        article_url = link["url"]
+        cache_path = RNS_CACHE_DIR / ticker_key / f"london_south_east_{_safe_cache_name(article_url)}.html"
+        try:
+            article_html = _get_text(article_url, cache_path, force_refresh=force_refresh)
+            announcements.append(
+                parse_london_south_east_rns_article(
+                    article_html,
+                    article_url,
+                    ticker_key,
+                    title=link.get("title", ""),
+                    released=link.get("released") or None,
+                )
+            )
+        except Exception as exc:
+            get_logger(__name__).warning("London South East RNS article fetch/parse failed for %s: %s", article_url, exc)
+    return announcements
+
+
 def fetch_recent_lse_rns_announcements(
     ticker: str,
     company_name: str = "",
@@ -345,21 +592,62 @@ def fetch_recent_lse_rns_announcements(
     ticker_key = normalize_lse_ticker(ticker)
     if not ticker_key:
         return []
-    slug = _slugify_company(company_name or ticker_key)
-    index_url = f"{LSE_WEBSITE_BASE}/stock/{ticker_key}/{slug}/analysis"
-    index_cache = RNS_CACHE_DIR / ticker_key / "analysis.html"
-    index_html = _get_text(index_url, index_cache, force_refresh=force_refresh)
-    links = parse_lse_news_links(index_html, ticker_key)[:limit]
+    links: list[dict[str, str]] = []
+    for slug in _slug_candidates(company_name or ticker_key, ticker_key):
+        index_url = f"{LSE_WEBSITE_BASE}/stock/{ticker_key}/{slug}/analysis"
+        index_cache = RNS_CACHE_DIR / ticker_key / f"analysis_{_safe_cache_name(slug)}.html"
+        try:
+            index_html = _get_text(index_url, index_cache, force_refresh=force_refresh)
+        except Exception as exc:
+            get_logger(__name__).debug("RNS analysis page unavailable for %s/%s: %s", ticker_key, slug, exc)
+            continue
+        links = parse_lse_news_links(index_html, ticker_key)
+        if links:
+            break
+    links = links[:limit]
     announcements: list[RnsAnnouncement] = []
     for link in links:
         article_url = link["url"]
         cache_path = RNS_CACHE_DIR / ticker_key / f"{_safe_cache_name(article_url)}.html"
         try:
+            official = fetch_lse_news_article_from_url(article_url, ticker_key, force_refresh=force_refresh)
+            if official:
+                announcements.append(official)
+                continue
             article_html = _get_text(article_url, cache_path, force_refresh=force_refresh)
             announcements.append(parse_lse_news_article(article_html, article_url, ticker_key))
         except Exception as exc:
             get_logger(__name__).warning("RNS article fetch/parse failed for %s: %s", article_url, exc)
+    if len(announcements) < limit:
+        seen_urls = {announcement.url for announcement in announcements}
+        for announcement in fetch_london_south_east_rns_announcements(
+            ticker_key,
+            limit=limit - len(announcements),
+            force_refresh=force_refresh,
+        ):
+            if announcement.url not in seen_urls:
+                announcements.append(announcement)
+                seen_urls.add(announcement.url)
     return announcements
+
+
+def is_relevant_technical_source(title: str, text: str = "") -> bool:
+    searchable = f"{title} {text}".lower()
+    if any(term in searchable for term in NON_TECHNICAL_FINANCIAL_RESERVE_TERMS):
+        return False
+    if any(term in searchable for term in TECHNICAL_SOURCE_TERMS):
+        return True
+    if any(term in searchable for term in NON_TECHNICAL_RNS_TERMS):
+        return False
+    return False
+
+
+def _technical_field_count(row: dict[str, Any]) -> int:
+    return sum(1 for field in TECHNICAL_EVIDENCE_FIELDS if _present(row.get(field)))
+
+
+def _rns_source_name(url: str) -> str:
+    return "London South East RNS mirror" if "lse.co.uk" in str(url).lower() else "London Stock Exchange RNS"
 
 
 def _first_percentage_near(text: str, patterns: tuple[str, ...]) -> float | None:
@@ -378,6 +666,26 @@ def _find_numeric_near(text: str, patterns: tuple[str, ...]) -> float | None:
         if match:
             return _to_float(match.group(1))
     return None
+
+
+def _resource_category_context_found(lower_text: str, marker: str) -> bool:
+    if marker == "exploration target":
+        return "exploration target" in lower_text
+    if marker == "reserve":
+        return bool(
+            re.search(
+                r"\b(?:ore|mineral)\s+reserves?\b|\breserves?\b[^.]{0,80}(?:estimate|statement|category|resource)",
+                lower_text,
+            )
+        )
+    marker_pattern = re.escape(marker).replace("\\ ", r"\s+")
+    return bool(
+        re.search(
+            rf"(?:mineral\s+resource|resource|jorc|ni\s*43-101|m&i|measured\s+and\s+indicated)[^.]{{0,100}}\b{marker_pattern}\b"
+            rf"|\b{marker_pattern}\b[^.]{{0,100}}(?:mineral\s+resource|resource|jorc|ni\s*43-101)",
+            lower_text,
+        )
+    )
 
 
 def extract_technical_evidence_from_text(text: str, title: str = "") -> dict[str, Any]:
@@ -494,6 +802,8 @@ def extract_technical_evidence_from_text(text: str, title: str = "") -> dict[str
     )
     for marker, label in category_priority:
         if marker in lower:
+            if not _resource_category_context_found(lower, marker):
+                continue
             evidence["resource_category"] = label
             reason_codes.append(f"RNS resource confidence found: {label}")
             break
@@ -558,21 +868,26 @@ def extract_technical_evidence_from_text(text: str, title: str = "") -> dict[str
 def build_rns_technical_metrics_from_announcements(announcements: list[RnsAnnouncement]) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     for announcement in announcements:
-        searchable = f"{announcement.title} {announcement.text}".lower()
-        if not any(term in searchable for term in TECHNICAL_HEADLINE_TERMS):
+        if not is_relevant_technical_source(announcement.title, announcement.text):
             continue
         extracted = extract_technical_evidence_from_text(announcement.text, announcement.title)
-        if not extracted:
-            continue
+        reasons = extracted.pop("reason_codes", [])
+        field_count = _technical_field_count(extracted)
         rows.append(
             {
                 "ticker": announcement.ticker,
                 "announcement_date": announcement.released or "",
                 "announcement_title": announcement.title,
                 "source_url": announcement.url,
-                "source_name": "London Stock Exchange RNS",
+                "technical_evidence_status": (
+                    "structured_fields_extracted" if field_count else "rns_or_document_found_needs_review"
+                ),
+                "technical_field_count": field_count,
+                "source_name": _rns_source_name(announcement.url),
                 "confidence": "Medium",
-                "notes": "; ".join(extracted.pop("reason_codes", [])),
+                "notes": "; ".join(reasons)
+                if reasons
+                else "Technical/project RNS found; structured fields require analyst review",
                 **extracted,
             }
         )

@@ -235,13 +235,17 @@ The refresh command is:
 python -m scripts.refresh_rns_technical_evidence
 ```
 
-The parser reads recent London Stock Exchange RNS article pages, extracts technical fields from announcement text, records the source title/date/URL, and feeds those fields into the same scoring inputs used by the hybrid methodology. Live RNS fetching is not required at dashboard startup. By default, the dashboard reads tracked/configured evidence and the latest generated snapshot if present. Live refresh can be enabled for deliberate update sessions with:
+The scheduled workflow uses `data/company_market_snapshot.csv` as the input universe so the technical-evidence pass covers the broad dashboard company list, not only the curated watchlist.
+
+The parser reads recent RNS article pages, extracts technical fields from announcement text, records the source title/date/URL, and feeds those fields into the same scoring inputs used by the hybrid methodology. Direct London Stock Exchange RNS URLs are parsed through the official article JSON payload. Broad ticker discovery uses London South East's static `/rns/{ticker}/` pages as a fallback because the current LSE analysis pages are client-rendered shells. Relevant project/documentation RNS candidates are kept even when structured field extraction is incomplete. This lets the dashboard show `RNS found - review needed` instead of silently implying no technical documentation exists.
+
+Live RNS fetching is not required at dashboard startup. By default, the dashboard reads tracked/configured evidence and the latest generated snapshot if present. Live refresh can be enabled for deliberate update sessions with:
 
 ```powershell
 $env:ENABLE_RNS_TECHNICAL_REFRESH="true"
 ```
 
-RNS-derived evidence is visible in the comparison table through `Mineralogy`, `Recovery`, `Study Stage`, `Resource Confidence`, `Impurity Profile`, and `Technical Source`. The company overview modal also shows RNS technical evidence and links to source announcements where available.
+RNS-derived evidence is visible in the comparison table through `Mineralogy`, `Recovery`, `Study Stage`, `Resource Confidence`, `Impurity Profile`, `Technical Status`, and `Technical Source`. The company overview modal also shows RNS technical evidence and links to source announcements where available.
 
 ## Caching
 

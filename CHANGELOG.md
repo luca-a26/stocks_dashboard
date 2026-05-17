@@ -27,6 +27,8 @@ The format follows Keep a Changelog style, with an `Unreleased` section for work
 - Company overview tab for the comparison modal, including KPI blocks, driver summaries, resource links, and a lazy cached Yahoo share chart with safe fallback states.
 - RNS technical-evidence pipeline for mineralogy, metallurgical testwork, recovery, resource confidence, impurity/radioactivity, study stage, capex/opex, and processing-depth fields.
 - `config/rns_technical_evidence.csv`, `scripts.refresh_rns_technical_evidence`, and a scheduled GitHub Actions workflow for keeping RNS-derived technical evidence current.
+- RNS technical source-candidate tracking so project/documentation announcements are retained for analyst review even when structured extraction is incomplete.
+- London South East ticker RNS discovery fallback plus official LSE article JSON parsing to materially improve technical-evidence source coverage across the broad company universe.
 - London South East Industrial Metals sector importer that refreshes a broad LSE universe into ignored local cache storage.
 - Runtime logging to `logs/dashboard.log`.
 - GitHub-ready repository infrastructure, including CI, issue templates, pull request template, `.gitignore`, `.gitattributes`, and `.editorconfig`.
@@ -54,6 +56,7 @@ The format follows Keep a Changelog style, with an `Unreleased` section for work
 - Rehydrate comparison-table callback rows from `data/company_market_snapshot.csv` so paginated pages cannot show stale `n/a` market caps when the snapshot has valid data.
 - Made the comparison modal open on a company overview first, with the existing relative peer scorecard moved into a dedicated `Compare To Others` tab.
 - Added explicit technical-evidence columns and overview KPIs so RNS-derived mineralogy, recovery, study stage, resource confidence, impurity profile, and source RNS are visible instead of buried in score internals.
+- Added `Technical Status` to distinguish extracted technical fields from RNS/documentation sources that still need review.
 
 ### Fixed
 

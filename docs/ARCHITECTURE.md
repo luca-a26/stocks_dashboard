@@ -78,7 +78,9 @@ Technical asset evidence is a separate RNS-backed layer:
         |
 python -m scripts.refresh_rns_technical_evidence
         |
-London Stock Exchange RNS article pages
+London Stock Exchange RNS article JSON
+        |
+London South East static ticker RNS pages
         |
 data/rns_technical_evidence.csv
         |
@@ -89,8 +91,10 @@ data.rns.build_rns_technical_metrics()
 
 This layer feeds mineralogy, metallurgical testwork, recovery, impurity,
 resource confidence, study stage, capex/opex, and processing depth into the
-existing rare-earth score. Live RNS refreshes are controlled by
-`ENABLE_RNS_TECHNICAL_REFRESH` and default to off during dashboard startup.
+existing rare-earth score. It also records relevant RNS/document candidates
+that still need analyst review when the parser cannot safely extract structured
+fields. Live RNS refreshes are controlled by `ENABLE_RNS_TECHNICAL_REFRESH`
+and default to off during dashboard startup.
 
 Rare-earth discovery data follows a separate manual-enrichment path:
 

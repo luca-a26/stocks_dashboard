@@ -38,6 +38,7 @@ TABLE_COLUMNS = [
     "Study Stage",
     "Resource Confidence",
     "Impurity Profile",
+    "Technical Status",
     "Technical Source",
     "Commodity",
     "Stage Gates",
@@ -388,6 +389,15 @@ def _format_recovery(metrics: dict[str, Any]) -> str:
     return "Not found in RNS yet"
 
 
+def _format_technical_status(metrics: dict[str, Any]) -> str:
+    status = str(metrics.get("technical_evidence_status") or "").strip()
+    labels = {
+        "structured_fields_extracted": "RNS fields extracted",
+        "rns_or_document_found_needs_review": "RNS found - review needed",
+    }
+    return labels.get(status, "RNS/documentation refresh required")
+
+
 def _alias(stock: dict[str, Any], company: str) -> str:
     aliases = []
     former_name = stock.get("former_name")
@@ -457,6 +467,7 @@ def build_dashboard_rows(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "Study Stage": _format_technical_text(metrics.get("study_stage")),
                 "Resource Confidence": _format_technical_text(metrics.get("resource_category")),
                 "Impurity Profile": _format_technical_text(metrics.get("impurity_profile")),
+                "Technical Status": _format_technical_status(metrics),
                 "Technical Source": _format_technical_text(
                     metrics.get("rns_latest_title") or metrics.get("technical_data_source")
                 ),

@@ -28,7 +28,7 @@ jobs:
       - name: Refresh RNS technical evidence
         run: |
           python -m scripts.refresh_rns_technical_evidence \
-            --input config/ticker_universe.csv \
+            --input data/company_market_snapshot.csv \
             --output-csv data/rns_technical_evidence.csv \
             --output-json storage/audit/rns_technical_evidence_audit.json
 

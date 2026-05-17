@@ -31,6 +31,7 @@ COLUMN_TOOLTIPS = {
     "Study Stage": "RNS-derived technical stage such as scoping, PEA, PFS, DFS, FEED, pilot, construction, or operation.",
     "Resource Confidence": "Highest RNS-derived reserve/resource confidence signal, e.g. reserve, measured, indicated, inferred, or exploration target.",
     "Impurity Profile": "RNS-derived impurity or radioactivity evidence, including thorium, uranium, radionuclide, or clean/low-impurity indications.",
+    "Technical Status": "Whether RNS/documentation was found and whether structured technical fields were extracted or still need analyst review.",
     "Technical Source": "Most recent technical RNS title or evidence source feeding the asset-quality score.",
     "Stage Gates": "Caps applied to prevent weakly evidenced early projects from scoring as advanced assets.",
     "Missing Data": "Fields needed by the methodology that are unavailable for this company.",
