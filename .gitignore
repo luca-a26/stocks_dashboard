@@ -23,9 +23,11 @@ logs/*
 !logs/.gitkeep
 storage/cache/*
 !storage/cache/.gitkeep
+storage/audit/*
 storage/snapshots/*
 !storage/snapshots/.gitkeep
 daily_snapshots/
+outputs/
 
 # Local notebooks and exports
 *.ipynb

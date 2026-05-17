@@ -10,9 +10,12 @@ from typing import Any
 
 from analysis.rare_earth_scoring import score_metadata_only
 from data.discovery import load_project_pipeline
+from data.london_south_east import INDUSTRIAL_METALS_CACHE
+from data.market_snapshot import normalize_lse_ticker
 from data.utils import CONFIG_DIR, ensure_storage_path, get_logger, load_tickers
 
 UNIVERSE_PATH = CONFIG_DIR / "ticker_universe.csv"
+SECTOR_UNIVERSE_PATH = INDUSTRIAL_METALS_CACHE
 SCORE_CACHE_DIR = ensure_storage_path("storage/cache/scores")
 DEFAULT_UNIVERSE_LIMIT = 100
 
@@ -38,7 +41,7 @@ def score_cache_ttl() -> timedelta:
 
 
 def _normalise_key(value: Any) -> str:
-    return str(value or "").strip().upper()
+    return normalize_lse_ticker(value)
 
 
 def _split_tags(value: Any) -> list[str]:
@@ -77,9 +80,36 @@ def _normalise_record(raw: dict[str, Any]) -> dict[str, Any]:
         "source": str(raw.get("source") or "").strip(),
         "notes": str(raw.get("notes") or "").strip(),
         "priority": str(raw.get("priority") or "").strip(),
+        "company_id": str(raw.get("company_id") or "").strip(),
+        "display_name": str(raw.get("display_name") or "").strip(),
+        "legal_name": str(raw.get("legal_name") or "").strip(),
+        "primary_ticker": str(raw.get("primary_ticker") or "").strip(),
+        "mic": str(raw.get("mic") or "").strip(),
+        "isin": str(raw.get("isin") or "").strip(),
+        "sedol": str(raw.get("sedol") or "").strip(),
+        "figi": str(raw.get("figi") or "").strip(),
+        "share_class_figi": str(raw.get("share_class_figi") or "").strip(),
+        "quote_currency": str(raw.get("quote_currency") or "").strip(),
+        "reporting_currency": str(raw.get("reporting_currency") or "").strip(),
+        "lse_issuer_code": str(raw.get("lse_issuer_code") or "").strip(),
+        "lse_slug": str(raw.get("lse_slug") or "").strip(),
+        "yahoo_symbol": str(raw.get("yahoo_symbol") or "").strip(),
+        "company_stage": str(raw.get("company_stage") or "").strip(),
+        "manual_review_status": str(raw.get("manual_review_status") or "").strip(),
         "former_name": str(raw.get("former_name") or "").strip(),
         "former_ticker": str(raw.get("former_ticker") or "").strip(),
         "requested_name": str(raw.get("requested_name") or "").strip(),
+        "last_price": str(raw.get("last_price") or "").strip(),
+        "currency": str(raw.get("currency") or "").strip(),
+        "market_cap": str(raw.get("market_cap") or "").strip(),
+        "shares_outstanding_lfy": str(raw.get("shares_outstanding_lfy") or "").strip(),
+        "volume": str(raw.get("volume") or "").strip(),
+        "day_change_pct": str(raw.get("day_change_pct") or "").strip(),
+        "day_low": str(raw.get("day_low") or "").strip(),
+        "day_high": str(raw.get("day_high") or "").strip(),
+        "fifty_two_week_low": str(raw.get("fifty_two_week_low") or "").strip(),
+        "fifty_two_week_high": str(raw.get("fifty_two_week_high") or "").strip(),
+        "trades": str(raw.get("trades") or "").strip(),
     }
 
 
@@ -113,6 +143,13 @@ def _records_from_universe_csv(path: Path) -> dict[str, dict[str, Any]]:
 
     get_logger(__name__).info("Loaded %s universe metadata rows from %s", len(records), path)
     return records
+
+
+def _records_from_sector_cache(path: Path = SECTOR_UNIVERSE_PATH) -> dict[str, dict[str, Any]]:
+    if not path.exists():
+        get_logger(__name__).info("London South East sector universe cache not found at %s", path)
+        return {}
+    return _records_from_universe_csv(path)
 
 
 def _records_from_watchlist() -> dict[str, dict[str, Any]]:
@@ -170,11 +207,15 @@ def load_ticker_universe(
     """
     Load cheap ticker metadata for search/ranking without market-data downloads.
 
-    The tracked CSV is the scalable universe source. The curated watchlist and
-    discovery config are merged in so existing high-priority names remain visible
-    even if the CSV has not yet been fully populated.
+    The ignored London South East sector cache can provide the broad universe.
+    The tracked CSV, curated watchlist, and discovery config are then merged in
+    so high-priority names retain richer local metadata without forcing a live
+    sector scrape or per-company data download at startup.
     """
-    records = _records_from_universe_csv(path or UNIVERSE_PATH)
+    records = _records_from_sector_cache() if path is None else {}
+
+    for ticker, record in _records_from_universe_csv(path or UNIVERSE_PATH).items():
+        records[ticker] = _merge_record(records.get(ticker, {}), record)
 
     for source_records in (
         _records_from_watchlist() if include_curated else {},
@@ -322,8 +363,7 @@ def load_cached_scored_stocks(*, include_stale: bool = True) -> list[dict[str, A
         except (OSError, json.JSONDecodeError) as exc:
             get_logger(__name__).warning("Unable to read score cache %s: %s", path, exc)
             continue
-        if state == "stale":
-            stock["score_status"] = "stale"
+        stock["score_cache_state"] = state
         stocks.append(stock)
 
     get_logger(__name__).info("Loaded %s cached scored stocks", len(stocks))

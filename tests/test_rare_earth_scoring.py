@@ -172,3 +172,69 @@ def test_reason_codes_and_missing_data_are_dashboard_friendly():
     assert "Strong NdPr exposure" in scored["reason_codes"] or "NdPr-rich basket" in scored["reason_codes"]
     assert "revenue_lfy" in scored["missing_data_fields"]
     assert isinstance(scored["score_breakdown"], dict)
+
+
+def test_workbook_benchmark_layer_enhances_dashboard_methodology():
+    metadata = _strong_technical_metadata() | {
+        "sector_coverage": "mining processing separation magnets",
+        "total_mineral_deposit_value": 2_000_000_000,
+        "ore_reserve_value": 700_000_000,
+        "mineral_resource_value": 1_600_000_000,
+        "npv_8": 900_000_000,
+        "deposit_value": 1_800_000_000,
+        "mining_revenue": 80_000_000,
+        "processing_revenue": 120_000_000,
+        "separation_revenue": 180_000_000,
+        "magnet_revenue": 220_000_000,
+        "current_ore_production_2026": 1_000_000,
+        "planned_ore_production_2027": 1_400_000,
+        "planned_ore_production_2028": 1_800_000,
+        "contained_dytb_tonnes": 7_000,
+        "hree_content": 12,
+        "benchmarks": {
+            "median_total_mineral_deposit_value": 1_000_000_000,
+            "median_ore_reserve_value": 300_000_000,
+            "median_mineral_resource_value": 800_000_000,
+            "median_treo_grade_pct": 2.0,
+            "median_ndpr_content": 40_000,
+            "median_dytb_content": 2_000,
+            "median_npv_8": 350_000_000,
+            "median_deposit_value": 800_000_000,
+            "median_annual_mining_revenue": 50_000_000,
+            "median_annual_processing_revenue": 40_000_000,
+            "median_annual_separation_revenue": 30_000_000,
+            "median_annual_magnet_revenue": 20_000_000,
+            "median_ore_production_2026": 500_000,
+            "median_ore_production_2027": 600_000,
+            "median_ore_production_2028": 700_000,
+            "median_life_of_mine": 12,
+        },
+    }
+    metrics = {"market_cap": 500_000_000, "last_price": 120, "revenue_lfy": 55_000_000, "long_term_debt_to_capital_pct": 5}
+
+    scored = score_company(metadata, metrics)
+
+    assert scored["benchmark_score"] >= 7
+    assert scored["technical_asset_score"] >= scored["base_technical_asset_score"]
+    assert scored["commercial_financial_score"] >= scored["base_commercial_financial_score"]
+    assert scored["benchmark_breakdown"]["confidence_level"] in {"Medium", "High"}
+    assert scored["suggested_peer_group"] != "Unclassified"
+    assert any("Above-median" in driver for driver in scored["top_positive_drivers"])
+    assert "workbook_benchmark" in scored["score_breakdown"]
+
+
+def test_workbook_methodology_flags_sparse_benchmark_data():
+    metadata = {
+        "ticker": "SPARSE",
+        "company_name": "Sparse Rare Earths",
+        "country": "United Kingdom",
+        "commodity_tags": ["rare earths"],
+        "supply_chain_role": "Developer",
+        "total_mineral_deposit_value": 250_000_000,
+    }
+    scored = score_company(metadata, {"market_cap": 40_000_000, "last_price": 8})
+
+    assert scored["benchmark_score"] >= 5
+    assert scored["confidence_level"] == "Low"
+    assert "Missing valuation/production benchmark inputs" in scored["top_negative_drivers"]
+    assert "ore_reserve_value" in scored["missing_data_fields"]
