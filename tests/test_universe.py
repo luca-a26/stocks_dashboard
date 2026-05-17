@@ -47,6 +47,72 @@ def test_default_metadata_ranking_returns_top_100():
     assert all(universe.preliminary_score(record) >= 0 for record in ranked)
 
 
+def test_default_ranked_stocks_can_return_full_comparison_universe(monkeypatch):
+    records = list(_large_universe_records().values())[:116]
+    monkeypatch.setattr(composite, "load_ticker_universe", lambda: records)
+    monkeypatch.setattr(composite, "load_cached_scored_stocks", lambda include_stale=True: [])
+    monkeypatch.setattr(composite, "load_tickers", lambda: {})
+
+    stocks, source = composite.load_default_ranked_stocks(limit=None)
+
+    assert len(stocks) == 116
+    assert all(stock["score_status"] == "metadata_only" for stock in stocks)
+    assert "metadata" in source
+
+
+def test_metadata_stock_keeps_sector_market_snapshot():
+    stock = composite._metadata_stock(
+        {
+            "ticker": "RIO",
+            "company_name": "Rio Tinto",
+            "exchange": "LSE",
+            "commodity_tags": ["industrial metals"],
+            "last_price": "7927",
+            "volume": "2827539",
+        }
+    )
+
+    metrics = stock["fundamental"]["metrics"]
+    assert stock["score_status"] == "metadata_only"
+    assert metrics["last_price"] == 7927
+    assert metrics["volume"] == 2_827_539
+
+
+def test_metadata_stock_uses_london_south_east_share_page_for_market_cap(monkeypatch):
+    monkeypatch.setattr(composite, "STARTUP_BASIC_MARKET_FALLBACK", True)
+    monkeypatch.setattr(
+        composite,
+        "fetch_share_price_snapshot",
+        lambda ticker, company_name: {
+            "market_cap": 274_420_000,
+            "shares_outstanding_lfy": 114_340_000,
+            "fifty_two_week_low": 117.5,
+            "fifty_two_week_high": 327.5,
+            "currency": "GBX",
+            "source": "London South East share page",
+        },
+    )
+
+    stock = composite._metadata_stock(
+        {
+            "ticker": "AAZ",
+            "company_name": "Anglo Asian Mining PLC",
+            "exchange": "LSE",
+            "commodity_tags": ["industrial metals"],
+            "last_price": "247.5",
+            "volume": "200187",
+            "source": "London South East Industrial Metals",
+        },
+        {},
+    )
+
+    metrics = stock["fundamental"]["metrics"]
+    assert metrics["market_cap"] == 282_991_500
+    assert metrics["shares_outstanding_lfy"] == 114_340_000
+    assert metrics["fifty_two_week_high"] == 327.5
+    assert "London South East share page" in metrics["source"]
+
+
 def test_search_matches_company_ticker_country_commodity_and_role():
     records = [
         {
@@ -94,6 +160,36 @@ def test_default_ranked_stocks_do_not_fetch_fundamentals(monkeypatch):
     assert called["count"] == 0
     assert stocks[0]["score_status"] == "metadata_only"
     assert "metadata" in source
+
+
+def test_default_ranked_stocks_preserves_stale_cached_score_status(monkeypatch):
+    monkeypatch.setattr(universe, "SCORE_CACHE_DIR", universe.SCORE_CACHE_DIR / "pytest_scores_default_status")
+    universe.score_cache_path("STALE").unlink(missing_ok=True)
+    universe.write_scored_stock_cache(
+        "STALE",
+        {
+            "ticker": "STALE",
+            "name": "Stale Cache Plc",
+            "composite_score": 6.1,
+            "full_score": 6.1,
+            "preliminary_score": 4.0,
+            "score_status": "partial",
+            "fundamental": {"fundamentals": {"drivers": ["fixture"]}, "metrics": {}},
+        },
+    )
+    monkeypatch.setattr(universe, "cache_state", lambda _path: "stale")
+    monkeypatch.setattr(
+        composite,
+        "load_ticker_universe",
+        lambda: [{"ticker": "STALE", "company_name": "Stale Cache Plc", "exchange": "LSE"}],
+    )
+    monkeypatch.setattr(composite, "load_market_snapshot", lambda: {})
+    monkeypatch.setattr(composite, "load_tickers", lambda: {})
+
+    stocks, _source = composite.load_default_ranked_stocks(limit=1)
+
+    assert stocks[0]["score_status"] == "partial"
+    assert stocks[0]["score_cache_state"] == "stale"
 
 
 def test_load_detailed_stock_fetches_once_then_uses_cache(monkeypatch):
@@ -161,6 +257,25 @@ def test_score_cache_hit_miss_and_stale_status(monkeypatch):
     assert stale_state == "stale"
 
 
+def test_stale_score_cache_preserves_analytical_score_status(monkeypatch):
+    monkeypatch.setattr(universe, "SCORE_CACHE_DIR", universe.SCORE_CACHE_DIR / "pytest_scores_status")
+    universe.score_cache_path("STALE").unlink(missing_ok=True)
+    universe.write_scored_stock_cache(
+        "STALE",
+        {
+            "ticker": "STALE",
+            "composite_score": 5,
+            "score_status": "partial",
+        },
+    )
+    monkeypatch.setattr(universe, "cache_state", lambda _path: "stale")
+
+    stocks = universe.load_cached_scored_stocks(include_stale=True)
+
+    assert stocks[0]["score_status"] == "partial"
+    assert stocks[0]["score_cache_state"] == "stale"
+
+
 def test_dashboard_rows_show_score_status_and_score_types():
     rows = build_dashboard_rows(
         [
@@ -182,5 +297,5 @@ def test_dashboard_rows_show_score_status_and_score_types():
     )
 
     assert rows[0]["Score Status"] == "metadata_only"
-    assert rows[0]["Full Score"] == "n/a"
+    assert rows[0]["Full Score"] == "Not loaded"
     assert rows[0]["Prelim Score"] == 5.2

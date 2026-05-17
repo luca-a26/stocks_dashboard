@@ -23,6 +23,7 @@ Before merge:
 2. Dashboard imports must not trigger live finance/network calls.
 3. Runtime artifacts must remain ignored by Git.
 4. `CHANGELOG.md` must be updated for user-visible behavior changes.
+5. Market snapshot changes should include a coverage audit when the refresh workflow or canonical data shape changes.
 
 ## Release Process
 
@@ -33,5 +34,7 @@ Before merge:
 ## Data Handling
 
 - Do not commit `logs/`, `storage/cache/`, generated snapshots, or exploratory notebooks.
+- `data/company_market_snapshot.csv` and `data/company_market_snapshot.json` are intentional committed data resources refreshed by scheduled automation.
+- `storage/audit/` holds generated coverage-audit artifacts and should stay ignored.
 - Keep small deterministic fixtures in `tests/fixtures/` if tests need sample data.
 - Document new data providers in `docs/ARCHITECTURE.md`.
