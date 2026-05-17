@@ -62,6 +62,18 @@ def test_default_ranked_stocks_can_return_full_comparison_universe(monkeypatch):
 
 def test_metadata_stock_keeps_sector_market_snapshot(monkeypatch):
     monkeypatch.setattr(composite, "build_rns_technical_metrics", lambda ticker, company_name: {})
+    market_snapshot = {
+        "RIO": {
+            "ticker": "RIO",
+            "market_cap": 126_290_000_000,
+            "market_cap_currency": "GBP",
+            "last_price": 7766,
+            "price_currency": "GBX",
+            "price_unit": "GBp",
+            "volume": 2_783_924,
+            "status": "found_lse_share_page",
+        }
+    }
     stock = composite._metadata_stock(
         {
             "ticker": "RIO",
@@ -70,13 +82,14 @@ def test_metadata_stock_keeps_sector_market_snapshot(monkeypatch):
             "commodity_tags": ["industrial metals"],
             "last_price": "7927",
             "volume": "2827539",
-        }
+        },
+        market_snapshot,
     )
 
     metrics = stock["fundamental"]["metrics"]
     assert stock["score_status"] == "metadata_only"
-    assert metrics["last_price"] == 7927
-    assert metrics["volume"] == 2_827_539
+    assert metrics["last_price"] == 7766
+    assert metrics["volume"] == 2_783_924
 
 
 def test_metadata_stock_with_rns_evidence_becomes_partial(monkeypatch):
@@ -97,7 +110,8 @@ def test_metadata_stock_with_rns_evidence_becomes_partial(monkeypatch):
             "commodity_tags": ["industrial metals"],
             "last_price": "7927",
             "volume": "2827539",
-        }
+        },
+        {},
     )
 
     metrics = stock["fundamental"]["metrics"]
@@ -135,7 +149,7 @@ def test_metadata_stock_uses_london_south_east_share_page_for_market_cap(monkeyp
     )
 
     metrics = stock["fundamental"]["metrics"]
-    assert metrics["market_cap"] == 282_991_500
+    assert metrics["market_cap"] == 274_420_000
     assert metrics["shares_outstanding_lfy"] == 114_340_000
     assert metrics["fifty_two_week_high"] == 327.5
     assert "London South East share page" in metrics["source"]

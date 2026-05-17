@@ -58,8 +58,23 @@ def _source_url(row: dict[str, Any]) -> str:
 def _to_float(value: Any) -> float | None:
     if value in (None, ""):
         return None
+    text = str(value).strip().replace(",", "")
+    multiplier = 1.0
+    lowered = text.lower()
+    for suffix, factor in (
+        ("billion", 1_000_000_000),
+        ("bn", 1_000_000_000),
+        ("b", 1_000_000_000),
+        ("million", 1_000_000),
+        ("m", 1_000_000),
+        ("k", 1_000),
+    ):
+        if lowered.endswith(suffix):
+            text = text[: -len(suffix)].strip()
+            multiplier = factor
+            break
     try:
-        return float(str(value).replace(",", ""))
+        return float(text) * multiplier
     except (TypeError, ValueError):
         return None
 
@@ -88,6 +103,47 @@ def _first_number(*values: Any) -> float | None:
     return None
 
 
+def _first_positive_number(*values: Any) -> float | None:
+    for value in values:
+        parsed = _to_float(value)
+        if parsed is not None and parsed > 0:
+            return parsed
+    return None
+
+
+def _normalised_price(value: Any, currency: str | None) -> float | None:
+    price = _first_positive_number(value)
+    if price is None:
+        return None
+    if str(currency or "").upper() in {"GBX", "GBPENCE", "GBP PENCE", "PENCE"}:
+        return price / 100
+    return price
+
+
+def _repair_share_count_units(
+    shares: float | None,
+    *,
+    market_cap: float | None,
+    last_price: float | None,
+    price_currency: str,
+) -> float | None:
+    """Use price and market cap to repair unitless LSE share counts.
+
+    Some LSE.co.uk pages expose "Shares in Issue" as a display-scaled number
+    (for example 5.08 for 5.08b). When market cap and price are available,
+    the implied share count is a safer persisted snapshot value.
+    """
+    normalised = _normalised_price(last_price, price_currency)
+    if market_cap is None or market_cap <= 0 or normalised is None or normalised <= 0:
+        return shares
+    implied_shares = market_cap / normalised
+    if shares is None:
+        return implied_shares
+    if shares < 1_000 and implied_shares > shares * 1_000:
+        return implied_shares
+    return shares
+
+
 def _first_text(*values: Any) -> str:
     for value in values:
         text = str(value or "").strip()
@@ -110,11 +166,11 @@ def _format_scaled(value: float | None, currency: str = "", *, money: bool = Fal
 
 def _status_for_row(existing_status: str, market_cap: float | None, shares: float | None) -> str:
     status = existing_status.lower().strip()
-    if status in NON_APPLICABLE_STATUSES and market_cap is None:
+    if status in NON_APPLICABLE_STATUSES and (market_cap is None or market_cap <= 0):
         return status
     if status == "found_suspended_security":
         return status
-    if market_cap is not None:
+    if market_cap is not None and market_cap > 0:
         return status if status == "found_via_non_constituent_search" else "found_lse_share_page"
     if shares == 0 and status == "not_available_gdr_zero_shares_on_source":
         return status
@@ -136,8 +192,8 @@ def _refresh_record(row: dict[str, Any], *, force_refresh: bool) -> dict[str, An
     except Exception as exc:
         errors.append(f"London South East refresh failed: {exc}")
 
-    market_cap = _first_number(lse_share.get("market_cap"), row.get("Market Cap Numeric"), row.get("market_cap"))
-    shares = _first_number(
+    market_cap = _first_positive_number(lse_share.get("market_cap"), row.get("Market Cap Numeric"), row.get("market_cap"))
+    shares = _first_positive_number(
         lse_share.get("shares_outstanding_lfy"),
         lse_share.get("shares_outstanding"),
         row.get("Shares in Issue"),
@@ -156,12 +212,12 @@ def _refresh_record(row: dict[str, Any], *, force_refresh: bool) -> dict[str, An
         except Exception as exc:
             errors.append(f"Yahoo fallback failed: {exc}")
 
-    market_cap = _first_number(
+    market_cap = _first_positive_number(
         market_cap,
         lse_api.get("market_cap"),
         yahoo.get("market_cap"),
     )
-    shares = _first_number(
+    shares = _first_positive_number(
         shares,
         lse_api.get("shares_outstanding_lfy"),
         lse_api.get("shares_outstanding"),
@@ -170,6 +226,13 @@ def _refresh_record(row: dict[str, Any], *, force_refresh: bool) -> dict[str, An
     )
     currency = _first_text(row.get("Market Cap Currency"), lse_api.get("currency"), yahoo.get("currency"))
     price_currency = _first_text(lse_share.get("currency"), lse_api.get("currency"), yahoo.get("currency"))
+    last_price = _first_number(lse_share.get("last_price"), lse_api.get("last_price"), yahoo.get("last_price"))
+    shares = _repair_share_count_units(
+        shares,
+        market_cap=market_cap,
+        last_price=last_price,
+        price_currency=price_currency,
+    )
     market_cap_display, magnitude = _format_scaled(market_cap, currency or "GBP", money=True)
     status = _status_for_row(str(row.get("Status") or row.get("status") or ""), market_cap, shares)
 
@@ -177,7 +240,7 @@ def _refresh_record(row: dict[str, Any], *, force_refresh: bool) -> dict[str, An
     if errors:
         notes = "; ".join(part for part in [notes, *errors] if part)
     elif not notes:
-        notes = "Refreshed from canonical market-data workflow; prefer computed price x shares where source cap conflicts."
+        notes = "Refreshed from canonical market-data workflow; prefer source market cap, with price x shares retained as a validation cross-check."
 
     return {
         "Ticker": ticker,
@@ -191,7 +254,7 @@ def _refresh_record(row: dict[str, Any], *, force_refresh: bool) -> dict[str, An
         "Primary Source": url or SHARE_PRICE_URL.format(ticker=ticker, slug=_slugify(company)),
         "Snapshot Date": now_text,
         "Notes": notes,
-        "Last Price": _first_number(lse_share.get("last_price"), lse_api.get("last_price"), yahoo.get("last_price")) or "",
+        "Last Price": last_price or "",
         "Price Currency": price_currency,
         "Price Unit": "GBp" if str(price_currency).upper() in {"GBX", "GBPENCE"} else price_currency,
         "Volume": _first_number(lse_share.get("volume"), lse_api.get("volume"), yahoo.get("volume")) or "",

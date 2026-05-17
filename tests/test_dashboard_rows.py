@@ -941,3 +941,51 @@ def test_paginated_display_records_are_rehydrated_from_snapshot(monkeypatch):
     assert hydrated[25]["Shares Outstanding"] == "850.0M"
     assert "company_market_snapshot.csv" in hydrated[25]["Data Notes"]
     view_model._market_snapshot_rows.cache_clear()
+
+
+def test_display_records_refresh_stale_populated_market_fields_from_snapshot(monkeypatch):
+    view_model._market_snapshot_rows.cache_clear()
+    monkeypatch.setattr(
+        view_model,
+        "load_market_snapshot",
+        lambda: {
+            "RIO": {
+                "ticker": "RIO",
+                "market_cap": 126_290_000_000,
+                "last_price": 7766,
+                "price_currency": "GBX",
+                "price_unit": "GBp",
+                "shares_outstanding": 1_626_191_089,
+                "volume": 2_783_924,
+                "fifty_two_week_low": 4110,
+                "fifty_two_week_high": 8275,
+                "snapshot_status": "found_lse_share_page",
+                "snapshot_date": "2026-05-17T21:20:26+00:00",
+                "snapshot_stale": False,
+                "source_url": "https://example.test/rio",
+                "notes": "fresh csv row",
+            }
+        },
+    )
+
+    hydrated = hydrate_dashboard_records_from_snapshot(
+        [
+            {
+                "Ticker": "RIO",
+                "Company": "Rio Tinto",
+                "Market Cap": "120.2B",
+                "Last Price": "7927 GBX",
+                "Shares Outstanding": "1.6B",
+                "Volume": "2.8M",
+                "52W Range": "n/a",
+                "Data Notes": "existing",
+                "Source": "cache",
+            }
+        ]
+    )
+
+    assert hydrated[0]["Market Cap"] == "126.3B"
+    assert hydrated[0]["Last Price"] == "7766 GBX"
+    assert hydrated[0]["52W Range"] == "4110 - 8275"
+    assert "company_market_snapshot.csv" in hydrated[0]["Data Notes"]
+    view_model._market_snapshot_rows.cache_clear()

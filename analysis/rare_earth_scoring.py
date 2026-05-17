@@ -1215,9 +1215,9 @@ def workbook_benchmark_score(metadata: dict[str, Any] | None, metrics: dict[str,
             elif component.get("score", 5) <= 4.5:
                 negative.extend(component_reasons)
     if completeness < 4.5:
-        negative.append("Low data completeness")
+        negative.append("Benchmark data sparse")
     if missing:
-        negative.append("Missing benchmark inputs")
+        negative.append("Missing valuation/production benchmark inputs")
 
     return {
         "score": score,

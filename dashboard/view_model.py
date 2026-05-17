@@ -519,7 +519,8 @@ def hydrate_dashboard_records_from_snapshot(records: list[dict[str, Any]]) -> li
     Dash table pagination works from the ``data`` prop. If that prop contains stale
     cached display rows, later pages can show old ``n/a`` values even though the
     snapshot has valid market caps. This function is intentionally display-level:
-    it only fills explicit missing labels and never overwrites a populated value.
+    it refreshes broad-market labels from the committed snapshot so stale scored
+    caches cannot keep older LSE prices or market caps on screen.
     """
     hydrated: list[dict[str, Any]] = []
     for record in records:
@@ -539,7 +540,10 @@ def hydrate_dashboard_records_from_snapshot(records: list[dict[str, Any]]) -> li
             "52W Range": _format_range(metrics.get("fifty_two_week_low"), metrics.get("fifty_two_week_high")),
         }
         for field, value in field_values.items():
-            if _is_missing_display_value(next_record.get(field)) and not _is_missing_display_value(value):
+            if not _is_missing_display_value(value) and (
+                _is_missing_display_value(next_record.get(field))
+                or not snapshot.get("snapshot_stale")
+            ):
                 next_record[field] = value
                 filled_fields.append(field)
 

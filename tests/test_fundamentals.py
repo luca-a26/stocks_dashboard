@@ -30,7 +30,7 @@ def test_fetch_fundamentals_uses_yahoo_fallback_when_lse_coverage_is_sparse(monk
 
     metrics = fundamentals.fetch_fundamentals("PRE")
 
-    assert metrics["market_cap"] == 12_500_000
+    assert metrics["market_cap"] == 50_000_000
     assert metrics["last_price"] == 12.5
     assert metrics["revenue_lfy"] == 10_000_000
     assert metrics["net_debt_to_equity_pct"] == 0.0

@@ -236,5 +236,5 @@ def test_workbook_methodology_flags_sparse_benchmark_data():
 
     assert scored["benchmark_score"] >= 5
     assert scored["confidence_level"] == "Low"
-    assert "Missing benchmark inputs" in scored["top_negative_drivers"]
+    assert "Missing valuation/production benchmark inputs" in scored["top_negative_drivers"]
     assert "ore_reserve_value" in scored["missing_data_fields"]

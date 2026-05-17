@@ -494,12 +494,26 @@ def normalise_company_financials(
 
     vendor_cap = _best(candidates, "market_cap_vendor")
     vendor_value = _to_float(vendor_cap.value) if vendor_cap else None
-    if computed_market_cap is not None and price_meta.get("normalized_price_currency"):
+    market_cap_not_applicable = bool(market_snapshot and snapshot_status in NON_APPLICABLE_STATUSES)
+    if vendor_value is not None and vendor_value > 0 and not market_cap_not_applicable:
+        snapshot["market_cap"] = vendor_value
+        field_provenance["market_cap"] = _field_dict(vendor_cap)
+        if computed_market_cap is not None and price_meta.get("normalized_price_currency"):
+            delta = abs(computed_market_cap - vendor_value) / vendor_value
+            snapshot["market_cap_computed_crosscheck"] = computed_market_cap
+            snapshot["market_cap_vendor_delta_pct"] = round(delta * 100, 2)
+            if delta > 0.15:
+                flags.append("market_cap_vendor_conflict")
+    elif (
+        computed_market_cap is not None
+        and price_meta.get("normalized_price_currency")
+        and not market_cap_not_applicable
+    ):
         snapshot["market_cap"] = computed_market_cap
         field_provenance["market_cap"] = {
             "value": computed_market_cap,
             "source": "computed price x shares",
-            "source_rank": 0,
+            "source_rank": 4,
             "as_of_date": field_provenance.get("last_price", {}).get("as_of_date"),
             "status": "computed",
             "confidence": min(
@@ -514,19 +528,9 @@ def normalise_company_financials(
         }
         flags.append("market_cap_computed")
         notes.append("Market cap computed from normalized price x shares outstanding")
-        if vendor_value and vendor_value > 0:
-            delta = abs(computed_market_cap - vendor_value) / vendor_value
-            snapshot["market_cap_vendor"] = vendor_value
-            snapshot["market_cap_vendor_delta_pct"] = round(delta * 100, 2)
-            if delta > 0.15:
-                flags.append("market_cap_vendor_conflict")
-                notes.append(f"Computed market cap differs from vendor value by {delta:.0%}")
-    elif vendor_value is not None and vendor_value > 0:
-        snapshot["market_cap"] = vendor_value
-        field_provenance["market_cap"] = _field_dict(vendor_cap)
     else:
         snapshot["market_cap"] = None
-        if market_snapshot and snapshot_status in NON_APPLICABLE_STATUSES:
+        if market_cap_not_applicable:
             field_provenance["market_cap"] = {
                 "value": None,
                 "source": "company market snapshot",

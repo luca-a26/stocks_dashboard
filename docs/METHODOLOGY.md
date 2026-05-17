@@ -387,7 +387,7 @@ UK pence prices are normalised first:
 247.5 GBp -> 2.475 GBP
 ```
 
-The dashboard keeps original price, price unit, normalised price, and normalised currency metadata. If a vendor-reported market cap exists, the computed value is compared against it. Differences above 15% add `market_cap_vendor_conflict` to `data_quality_flags`. Computed market cap is preferred when price and shares are valid unless a high-confidence manual override is supplied.
+The dashboard keeps original price, price unit, normalised price, and normalised currency metadata. If a vendor-reported market cap exists, the dashboard uses that reported/source value and keeps `normalised price x shares outstanding` only as a cross-check. If the cross-check differs by more than 15%, `market_cap_vendor_conflict` is added to `data_quality_flags`; the source market cap still remains the displayed value unless a high-confidence manual override replaces it. Computed market cap is used only when no usable source market cap is available.
 
 ### Revenue Status
 

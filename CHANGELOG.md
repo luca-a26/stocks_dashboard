@@ -37,6 +37,9 @@ The format follows Keep a Changelog style, with an `Unreleased` section for work
 
 ### Changed
 
+- Prioritised source-reported market cap over computed `price x shares`; computed market cap is now retained as a validation fallback/cross-check instead of replacing LSE-style vendor values.
+- Refreshed the committed market snapshot with LSE share prices, 52-week ranges, and repaired share-count scaling so stale cached rows no longer keep old market fields on screen.
+- Renamed sparse benchmark warnings so the dashboard distinguishes missing valuation/production benchmark fields from missing basic market or RNS data.
 - Made `data.load_tickers()` side-effect free so config loading no longer downloads market data.
 - Consolidated dashboard data into an explainable rare-earth hybrid scoring model while preserving LSE-backed financial metrics.
 - Replaced the large universe-search panel with a compact top search bar and expanded the comparison table to include the full merged LSE Industrial Metals universe.

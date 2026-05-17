@@ -38,7 +38,7 @@ def test_gbpence_price_is_normalized_for_market_cap():
     assert meta_from_unit["price_unit"] == "GBp"
 
 
-def test_market_cap_computation_flags_vendor_conflict():
+def test_source_market_cap_beats_computed_crosscheck_and_flags_conflict():
     identity = build_company_identity({"ticker": "AAZ", "exchange": "LSE"})
     metrics = normalise_company_financials(
         identity,
@@ -49,9 +49,27 @@ def test_market_cap_computation_flags_vendor_conflict():
         overrides=[],
     )
 
-    assert metrics["market_cap"] == 282_991_500
-    assert "market_cap_computed" in metrics["data_quality_flags"]
+    assert metrics["market_cap"] == 10_000_000
+    assert metrics["market_cap_computed_crosscheck"] == 282_991_500
+    assert metrics["field_provenance"]["market_cap"]["source"] == "Yahoo Finance fallback"
+    assert "market_cap_computed" not in metrics["data_quality_flags"]
     assert "market_cap_vendor_conflict" in metrics["data_quality_flags"]
+
+
+def test_market_cap_computation_used_when_source_cap_missing():
+    identity = build_company_identity({"ticker": "AAZ", "exchange": "LSE"})
+    metrics = normalise_company_financials(
+        identity,
+        {
+            "lse": {"last_price": 247.5, "currency": "GBX"},
+            "yahoo": {"shares_outstanding_lfy": 114_340_000},
+        },
+        overrides=[],
+    )
+
+    assert metrics["market_cap"] == 282_991_500
+    assert metrics["field_provenance"]["market_cap"]["source"] == "computed price x shares"
+    assert "market_cap_computed" in metrics["data_quality_flags"]
 
 
 def test_market_snapshot_loader_normalizes_supplied_schema():
